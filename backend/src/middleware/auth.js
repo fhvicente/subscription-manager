@@ -1,70 +1,54 @@
-const { createClerkClient } = require('@clerk/express');
-const prisma = require('../utils/prisma');
-const jwt = require('jsonwebtoken');
+const { createClerkClient } = require('@clerk/clerk-sdk-node');
+const prisma = require('../lib/prisma');
 
 // Initialize Clerk client
 const clerk = createClerkClient({
-    secretKey: process.env.CLERK_SECRET_KEY,
+  secretKey: process.env.CLERK_SECRET_KEY,
 });
 
-// SOLUÇÃO TEMPORÁRIA: Ignora autenticação real e usa o primeiro usuário disponível
+// Update the auth middleware to use Clerk and Prisma
 const authenticate = async (req, res, next) => {
-    console.log('\n--- INÍCIO DO PROCESSO DE AUTENTICAÇÃO (MODO DE EMERGÊNCIA) ---');
-    console.log('Endpoint requisitado:', req.method, req.originalUrl);
+  try {
+    const authHeader = req.headers.authorization;
     
-    try {
-        // Busca por qualquer usuário disponível no banco
-        const allUsers = await prisma.user.findMany({
-            take: 1
-        });
-        
-        console.log('Usuários disponíveis:', allUsers.length);
-        
-        if (allUsers.length === 0) {
-            // Se não houver nenhum usuário, cria um usuário de teste
-            console.log('Nenhum usuário encontrado, criando usuário de teste...');
-            const testUser = await prisma.user.create({
-                data: {
-                    clerkId: `test-${Date.now()}`,
-                    email: "emergency@example.com",
-                    name: "Usuário de Emergência",
-                    plan: 'free'
-                }
-            });
-            
-            console.log('Usuário de emergência criado:', testUser);
-            
-            // Adiciona o usuário de teste ao request
-            req.user = {
-                id: testUser.id,
-                clerkId: testUser.clerkId,
-                email: testUser.email,
-                name: testUser.name,
-                plan: testUser.plan
-            };
-        } else {
-            // Usa o primeiro usuário disponível
-            const user = allUsers[0];
-            console.log('Usando usuário existente para autenticação:', user.email);
-            
-            req.user = {
-                id: user.id,
-                clerkId: user.clerkId,
-                email: user.email,
-                name: user.name,
-                plan: user.plan
-            };
-        }
-        
-        console.log('--- FIM DO PROCESSO DE AUTENTICAÇÃO (MODO DE EMERGÊNCIA): SUCESSO ---\n');
-        next();
-    } catch (error) {
-        console.error('Erro no modo de emergência:', error);
-        return res.status(500).json({ 
-            message: 'Erro no servidor - modo de emergência', 
-            error: error.message 
-        });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
+
+    const token = authHeader.split(' ')[1];
+    
+    // Verify token with Clerk
+    const { sub } = await clerk.verifyToken(token);
+    
+    if (!sub) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    
+    // Find user in our database by Clerk ID
+    const user = await prisma.user.findUnique({
+      where: {
+        clerkId: sub
+      }
+    });
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found in database' });
+    }
+    
+    // Add user info to request
+    req.user = {
+      id: user.id,
+      clerkId: user.clerkId,
+      email: user.email,
+      name: user.name,
+      plan: user.plan
+    };
+    
+    next();
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
 };
 
 module.exports = { authenticate };

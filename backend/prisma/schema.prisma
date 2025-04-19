@@ -9,32 +9,38 @@ datasource db {
 
 model User {
   id                  String               @id @default(uuid())
-  clerkId             String               @unique
   email               String               @unique
-  name                String?
+  name                String
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  plan                String               @default("free")
-  stripeCustomerId    String?
+  password            String?
+  clerkId             String?              @unique
+  plan                String?
   notificationSetting NotificationSetting?
   paymentLogs         PaymentLog[]
-  subscriptions       Subscription[]
+  todos               Todo[]
 }
 
 model Subscription {
-  id                String   @id @default(uuid())
-  name              String
-  amount            Float
-  renewalDate       DateTime
-  frequency         String
-  category          String
-  description       String?
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  userId            String
-  notificationsSent Json?
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dueDate     DateTime
+  price       Float
+  status      String   @default("active")
+}
+
+model Todo {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model NotificationSetting {

@@ -22,4 +22,3 @@ router.get('/history', paymentController.getPaymentHistory);
 router.get('/subscription-status', paymentController.getSubscriptionStatus);
 
 module.exports = router;
-

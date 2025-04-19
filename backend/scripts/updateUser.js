@@ -1,22 +1,25 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+import { get, run } from '../src/db/database.js';
 
 async function updateUser() {
   try {
-    const user = await prisma.user.update({
-      where: {
-        email: "SEU_EMAIL_AQUI" // Substitua pelo email do usuário
-      },
-      data: {
-        clerkId: "SEU_CLERK_ID_AQUI" // Substitua pelo ID do Clerk (começa com user_)
-      }
-    });
+    const email = "SEU_EMAIL_AQUI"; // Substitua pelo email do usuário
+    const clerkId = "SEU_CLERK_ID_AQUI"; // Substitua pelo ID do Clerk (começa com user_)
     
-    console.log('Usuário atualizado:', user);
+    // Update user with clerk ID
+    const result = await run(
+      'UPDATE users SET clerkId = ? WHERE email = ?',
+      [clerkId, email]
+    );
+    
+    if (result.changes > 0) {
+      // Get updated user
+      const user = await get('SELECT * FROM users WHERE email = ?', [email]);
+      console.log('Usuário atualizado:', user);
+    } else {
+      console.log('Usuário não encontrado ou nenhuma atualização foi feita');
+    }
   } catch (error) {
     console.error('Erro ao atualizar usuário:', error);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

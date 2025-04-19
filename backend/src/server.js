@@ -1,7 +1,7 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const webhookRoutes = require('./routes/webhookRoutes');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import webhookRoutes from './routes/webhookRoutes.js';
 
 dotenv.config();
 
@@ -15,5 +15,7 @@ app.use('/webhook', webhookRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-}); 
+  console.log(`Server running on port ${PORT}`);
+});
+
+export default app; 

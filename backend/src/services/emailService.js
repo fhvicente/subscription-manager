@@ -1,12 +1,29 @@
-const sgMail = require('@sendgrid/mail');
-const prisma = require('../utils/prisma');
+import sgMail from '@sendgrid/mail';
+import { get, run, query } from '../db/database.js';
 
-// Initialize SendGrid with API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Initialize SendGrid with API key if available
+const apiKey = process.env.SENDGRID_API_KEY;
+try {
+  if (apiKey && apiKey.startsWith('SG.')) {
+    sgMail.setApiKey(apiKey);
+    console.log('SendGrid API initialized successfully');
+  } else {
+    console.warn('SendGrid API key not properly configured. Email notifications will be simulated.');
+  }
+} catch (error) {
+  console.error('Error initializing SendGrid:', error);
+}
 
 // Send email notification
 const sendEmail = async (to, subject, text, html) => {
     try {
+        // Check if SendGrid is properly configured
+        if (!apiKey || !apiKey.startsWith('SG.')) {
+            console.log(`[EMAIL SIMULATION] To: ${to}, Subject: ${subject}`);
+            console.log(`[EMAIL SIMULATION] Text: ${text.substring(0, 100)}...`);
+            return true; // Simulate success for development
+        }
+
         const msg = {
             to,
             from: process.env.EMAIL_FROM,
@@ -31,16 +48,18 @@ const sendEmail = async (to, subject, text, html) => {
 const sendRenewalNotification = async (userId, subscriptionId) => {
     try {
         // Get user and subscription details
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                notificationSetting: true
-            }
-        });
+        const user = await get(
+            `SELECT u.*, ns.emailEnabled, ns.daysBeforeRenewal 
+             FROM users u 
+             LEFT JOIN notification_settings ns ON u.id = ns.userId 
+             WHERE u.id = ?`,
+            [userId]
+        );
       
-        const subscription = await prisma.subscription.findUnique({
-            where: { id: subscriptionId }
-        });
+        const subscription = await get(
+            'SELECT * FROM subscriptions WHERE id = ?',
+            [subscriptionId]
+        );
       
         if (!user || !subscription) {
             console.error('User or subscription not found');
@@ -48,7 +67,7 @@ const sendRenewalNotification = async (userId, subscriptionId) => {
         }
       
         // Check if email notifications are enabled
-        if (!user.notificationSetting || !user.notificationSetting.emailEnabled) {
+        if (!user.emailEnabled) {
             console.log('Email notifications disabled for user');
             return false;
         }
@@ -87,17 +106,27 @@ const sendRenewalNotification = async (userId, subscriptionId) => {
       
         if (sent) {
             // Update subscription with notification record
-            const notificationsSent = subscription.notificationsSent || [];
+            let notificationsSent = [];
+            
+            // Parse existing notifications if available
+            try {
+                if (subscription.notificationsSent) {
+                    notificationsSent = JSON.parse(subscription.notificationsSent);
+                }
+            } catch (e) {
+                console.error('Error parsing notifications:', e);
+            }
+            
             notificationsSent.push({
                 type: 'email',
-                sentAt: new Date(),
+                sentAt: new Date().toISOString(),
                 renewalDate: subscription.renewalDate
             });
             
-            await prisma.subscription.update({
-                where: { id: subscription.id },
-                data: { notificationsSent: notificationsSent }
-            });
+            await run(
+                'UPDATE subscriptions SET notificationsSent = ? WHERE id = ?',
+                [JSON.stringify(notificationsSent), subscription.id]
+            );
         }
         
         return sent;
@@ -112,31 +141,38 @@ const sendRenewalNotification = async (userId, subscriptionId) => {
 const checkUpcomingRenewals = async () => {
     try {
         // Get all active subscriptions with their users and notification settings
-        const subscriptions = await prisma.subscription.findMany({
-            where: { active: true },
-            include: {
-                user: {
-                    include: {
-                        notificationSetting: true
-                    }
-                }
-            }
-        });
+        const subscriptions = await query(
+            `SELECT s.*, u.id as userId, u.name as userName, u.email as userEmail, 
+                    ns.emailEnabled, ns.daysBeforeRenewal
+             FROM subscriptions s
+             JOIN users u ON s.userId = u.id
+             LEFT JOIN notification_settings ns ON u.id = ns.userId
+             WHERE s.active = 1`
+        );
         
         const today = new Date();
         const notificationsSent = [];
         
         for (const subscription of subscriptions) {
-            // Skip if user has no notification settings
-            if (!subscription.user.notificationSetting) continue;
+            // Skip if user has no notification settings or email disabled
+            if (!subscription.emailEnabled) continue;
             
             const renewalDate = new Date(subscription.renewalDate);
             const daysUntilRenewal = Math.ceil((renewalDate - today) / (1000 * 60 * 60 * 24));
             
             // Check if notification should be sent based on user settings
-            if (daysUntilRenewal === subscription.user.notificationSetting.daysBeforeRenewal) {
+            if (daysUntilRenewal === subscription.daysBeforeRenewal) {
                 // Check if notification was already sent for this renewal
-                const notificationHistory = subscription.notificationsSent || [];
+                let notificationHistory = [];
+                
+                try {
+                    if (subscription.notificationsSent) {
+                        notificationHistory = JSON.parse(subscription.notificationsSent);
+                    }
+                } catch (e) {
+                    console.error('Error parsing notifications:', e);
+                }
+                
                 const alreadySent = notificationHistory.some(notification => {
                     const notificationRenewalDate = new Date(notification.renewalDate);
                     return notificationRenewalDate.toDateString() === renewalDate.toDateString();
@@ -144,12 +180,12 @@ const checkUpcomingRenewals = async () => {
             
                 if (!alreadySent) {
                     // Send notification
-                    const sent = await sendRenewalNotification(subscription.user.id, subscription.id);
+                    const sent = await sendRenewalNotification(subscription.userId, subscription.id);
                     
                     if (sent) {
                         notificationsSent.push({
                             subscriptionId: subscription.id,
-                            userId: subscription.user.id,
+                            userId: subscription.userId,
                             subscriptionName: subscription.name,
                             renewalDate: renewalDate
                         });
@@ -171,9 +207,7 @@ const checkUpcomingRenewals = async () => {
 const sendTestNotification = async (userId, type) => {
     try {
         // Get user details
-        const user = await prisma.user.findUnique({
-            where: { id: userId }
-        });
+        const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
         
         if (!user) {
             console.error('User not found');
@@ -209,7 +243,7 @@ const sendTestNotification = async (userId, type) => {
     }
 };
 
-module.exports = {
+export {
     sendEmail,
     sendRenewalNotification,
     checkUpcomingRenewals,

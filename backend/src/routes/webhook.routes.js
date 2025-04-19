@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { Webhook } from 'svix';
+import bodyParser from 'body-parser';
+import { get, run, query } from '../db/database.js';
+
 const router = express.Router();
-const { Webhook } = require('svix');
-const bodyParser = require('body-parser');
-const prisma = require('../lib/prisma');
 
 // Webhook signing secret from Clerk Dashboard
 const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
@@ -40,33 +41,39 @@ router.post('/clerk', async (req, res) => {
     switch (type) {
       case 'user.created':
         // Create user in your database
-        await prisma.user.create({
-          data: {
-            id: data.id,
-            email: data.email_addresses[0].email_address,
-            name: `${data.first_name} ${data.last_name}`.trim(),
-            imageUrl: data.image_url,
-          },
-        });
+        await run(
+          `INSERT INTO users (id, email, name, imageUrl) 
+           VALUES (?, ?, ?, ?)`,
+          [
+            data.id,
+            data.email_addresses[0].email_address,
+            `${data.first_name} ${data.last_name}`.trim(),
+            data.image_url
+          ]
+        );
         break;
         
       case 'user.updated':
         // Update user in your database
-        await prisma.user.update({
-          where: { id: data.id },
-          data: {
-            email: data.email_addresses[0].email_address,
-            name: `${data.first_name} ${data.last_name}`.trim(),
-            imageUrl: data.image_url,
-          },
-        });
+        await run(
+          `UPDATE users 
+           SET email = ?, name = ?, imageUrl = ? 
+           WHERE id = ?`,
+          [
+            data.email_addresses[0].email_address,
+            `${data.first_name} ${data.last_name}`.trim(),
+            data.image_url,
+            data.id
+          ]
+        );
         break;
         
       case 'user.deleted':
         // Delete user from your database
-        await prisma.user.delete({
-          where: { id: data.id },
-        });
+        await run(
+          'DELETE FROM users WHERE id = ?',
+          [data.id]
+        );
         break;
         
       default:
@@ -80,4 +87,4 @@ router.post('/clerk', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 

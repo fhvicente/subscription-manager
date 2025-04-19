@@ -1,28 +1,34 @@
-const primsa = require('../utils/prisma');
-const emailService = require('../services/emailService');
+import { get, run, query } from '../db/database.js';
+import * as emailService from '../services/emailService.js';
 
 // Get notification settings for a user
 const getNotificationSettings = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const settings = await prisma.notificationSetting.findUnique({
-            where: {
-                userId: userId
-            }
-        });
+        const settings = await get(
+            'SELECT * FROM notification_settings WHERE userId = ?',
+            [userId]
+        );
 
         if (!settings) {
             // Create default settings if none exist
-            const defaultSettings = await prisma.notificationSetting.create({
-                data: {
-                    userId: userId,
-                    emailEnabled: true,
-                    smsEnabled: false,
-                    pushEnabled: false,
-                    daysBeforeRenewal: 3
-                }
-            });
+            const result = await run(
+                `INSERT INTO notification_settings 
+                (userId, emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal) 
+                VALUES (?, ?, ?, ?, ?)`,
+                [userId, true, false, false, 3]
+            );
+            
+            const defaultSettings = {
+                id: result.id,
+                userId,
+                emailEnabled: true,
+                smsEnabled: false,
+                pushEnabled: false,
+                daysBeforeRenewal: 3
+            };
+            
             return res.json(defaultSettings);
         }
         res.json(settings);
@@ -39,40 +45,56 @@ const updateNotificationSettings = async (req, res) => {
         const { emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal, phoneNumber } = req.body;
 
         // Find existing settings
-        const existingSettings = await prisma.notificationSetting.findUnique({
-            where: {
-                userId: userId
-            }
-        });
+        const existingSettings = await get(
+            'SELECT * FROM notification_settings WHERE userId = ?',
+            [userId]
+        );
 
         let settings;
 
         if (existingSettings) {
             // Update existing settings
-            settings = await prisma.notificationSetting.update({
-                where: {
-                    userId: userId
-                },
-                data: {
-                    emailEnabled: emailEnabled !== undefined ? emailEnabled : existingSettings.emailEnabled,
-                    smsEnabled: smsEnabled !== undefined ? smsEnabled : existingSettings.smsEnabled,
-                    pushEnabled: pushEnabled !== undefined ? pushEnabled : existingSettings.pushEnabled,
-                    daysBeforeRenewal: daysBeforeRenewal !== undefined ? daysBeforeRenewal : existingSettings.daysBeforeRenewal,
-                    phoneNumber: phoneNumber !== undefined ? phoneNumber : existingSettings.phoneNumber
-                }
-            });
+            await run(
+                `UPDATE notification_settings 
+                SET emailEnabled = ?, smsEnabled = ?, pushEnabled = ?, 
+                daysBeforeRenewal = ?, phoneNumber = ?
+                WHERE userId = ?`,
+                [
+                    emailEnabled !== undefined ? emailEnabled : existingSettings.emailEnabled,
+                    smsEnabled !== undefined ? smsEnabled : existingSettings.smsEnabled,
+                    pushEnabled !== undefined ? pushEnabled : existingSettings.pushEnabled,
+                    daysBeforeRenewal !== undefined ? daysBeforeRenewal : existingSettings.daysBeforeRenewal,
+                    phoneNumber !== undefined ? phoneNumber : existingSettings.phoneNumber,
+                    userId
+                ]
+            );
+            
+            // Get updated settings
+            settings = await get(
+                'SELECT * FROM notification_settings WHERE userId = ?',
+                [userId]
+            );
         } else {
             // Create new settings
-            settings = await prisma.notificationSetting.create({
-                data: {
-                    userId: userId,
-                    emailEnabled: emailEnabled !== undefined ? emailEnabled : true,
-                    smsEnabled: smsEnabled !== undefined ? smsEnabled : false,
-                    pushEnabled: pushEnabled !== undefined ? pushEnabled : false,
-                    daysBeforeRenewal: daysBeforeRenewal !== undefined ? daysBeforeRenewal : 3,
+            const result = await run(
+                `INSERT INTO notification_settings 
+                (userId, emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal, phoneNumber) 
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    userId,
+                    emailEnabled !== undefined ? emailEnabled : true,
+                    smsEnabled !== undefined ? smsEnabled : false,
+                    pushEnabled !== undefined ? pushEnabled : false,
+                    daysBeforeRenewal !== undefined ? daysBeforeRenewal : 3,
                     phoneNumber
-                }
-            });
+                ]
+            );
+            
+            // Get new settings
+            settings = await get(
+                'SELECT * FROM notification_settings WHERE userId = ?',
+                [userId]
+            );
         }
 
         res.json(settings);
@@ -146,7 +168,7 @@ const checkUpcomingRenewals = async (req, res) => {
 };
 
 
-module.exports = {
+export {
     getNotificationSettings,
     updateNotificationSettings,
     sendTestNotification,

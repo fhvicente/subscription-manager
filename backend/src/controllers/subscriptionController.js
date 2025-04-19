@@ -1,19 +1,17 @@
-const prisma = require('../utils/prisma');
+import { query, get, run } from '../db/database.js';
 
-// Get all subscriptions for a user
-const getSubscriptions = async (req, res) => {
+// Função para gerar um UUID simples
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Get all subscriptions
+export const getSubscriptions = async (req, res) => {
   try {
-    const userId = req.user.id;
-    
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        userId: userId
-      },
-      orderBy: {
-        renewalDate: 'asc'
-      }
-    });
-    
+    const subscriptions = await query('SELECT * FROM subscriptions ORDER BY due_date ASC');
     res.json(subscriptions);
   } catch (error) {
     console.error('Error fetching subscriptions:', error);
@@ -21,18 +19,12 @@ const getSubscriptions = async (req, res) => {
   }
 };
 
-// Get a single subscription
-const getSubscription = async (req, res) => {
+// Get a specific subscription by ID
+export const getSubscriptionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
     
-    const subscription = await prisma.subscription.findUnique({
-      where: {
-        id: id,
-        userId: userId
-      }
-    });
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
     
     if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
@@ -46,29 +38,25 @@ const getSubscription = async (req, res) => {
 };
 
 // Create a new subscription
-const createSubscription = async (req, res) => {
+export const createSubscription = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { name, amount, renewalDate, frequency, category, description } = req.body;
+    const { name, description, price, dueDate, status = 'active' } = req.body;
     
     // Validate required fields
-    if (!name || !amount || !renewalDate || !frequency || !category) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    if (!name || !price || !dueDate) {
+      return res.status(400).json({ message: 'Name, price, and due date are required' });
     }
     
-    const subscription = await prisma.subscription.create({
-      data: {
-        name,
-        amount: parseFloat(amount),
-        renewalDate: new Date(renewalDate),
-        frequency,
-        category,
-        description,
-        userId
-      }
-    });
+    const id = generateUUID();
     
-    res.status(201).json(subscription);
+    const result = await run(
+      'INSERT INTO subscriptions (id, name, description, price, due_date, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, name, description, price, dueDate, status]
+    );
+    
+    const newSubscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    
+    res.status(201).json(newSubscription);
   } catch (error) {
     console.error('Error creating subscription:', error);
     res.status(500).json({ message: 'Failed to create subscription' });
@@ -76,42 +64,67 @@ const createSubscription = async (req, res) => {
 };
 
 // Update a subscription
-const updateSubscription = async (req, res) => {
+export const updateSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-    const { name, amount, renewalDate, frequency, category, description, active } = req.body;
+    const { name, description, price, dueDate, status } = req.body;
     
-    // Check if subscription exists and belongs to user
-    const existingSubscription = await prisma.subscription.findUnique({
-      where: {
-        id: id
-      }
-    });
+    // Check if subscription exists
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
     
-    if (!existingSubscription) {
+    if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
     }
     
-    if (existingSubscription.userId !== userId) {
-      return res.status(403).json({ message: 'Not authorized to update this subscription' });
+    // Build update query dynamically based on provided fields
+    let updateFields = [];
+    let params = [];
+    
+    if (name !== undefined) {
+      updateFields.push('name = ?');
+      params.push(name);
     }
     
-    // Update subscription
-    const updatedSubscription = await prisma.subscription.update({
-      where: {
-        id: id
-      },
-      data: {
-        name: name !== undefined ? name : undefined,
-        amount: amount !== undefined ? parseFloat(amount) : undefined,
-        renewalDate: renewalDate !== undefined ? new Date(renewalDate) : undefined,
-        frequency: frequency !== undefined ? frequency : undefined,
-        category: category !== undefined ? category : undefined,
-        description: description !== undefined ? description : undefined,
-        active: active !== undefined ? active : undefined
-      }
-    });
+    if (description !== undefined) {
+      updateFields.push('description = ?');
+      params.push(description);
+    }
+    
+    if (price !== undefined) {
+      updateFields.push('price = ?');
+      params.push(price);
+    }
+    
+    if (dueDate !== undefined) {
+      updateFields.push('due_date = ?');
+      params.push(dueDate);
+    }
+    
+    if (status !== undefined) {
+      updateFields.push('status = ?');
+      params.push(status);
+    }
+    
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    
+    // Add ID as the last parameter
+    params.push(id);
+    
+    // Return if nothing to update
+    if (updateFields.length === 1) { // Only the updated_at field
+      return res.status(400).json({ message: 'No fields to update' });
+    }
+    
+    const result = await run(
+      `UPDATE subscriptions SET ${updateFields.join(', ')} WHERE id = ?`,
+      params
+    );
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'Subscription not found or no changes made' });
+    }
+    
+    const updatedSubscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
     
     res.json(updatedSubscription);
   } catch (error) {
@@ -121,32 +134,22 @@ const updateSubscription = async (req, res) => {
 };
 
 // Delete a subscription
-const deleteSubscription = async (req, res) => {
+export const deleteSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
     
-    // Check if subscription exists and belongs to user
-    const existingSubscription = await prisma.subscription.findUnique({
-      where: {
-        id: id
-      }
-    });
+    // Check if subscription exists
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
     
-    if (!existingSubscription) {
+    if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
     }
     
-    if (existingSubscription.userId !== userId) {
-      return res.status(403).json({ message: 'Not authorized to delete this subscription' });
-    }
+    const result = await run('DELETE FROM subscriptions WHERE id = ?', [id]);
     
-    // Delete subscription
-    await prisma.subscription.delete({
-      where: {
-        id: id
-      }
-    });
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'Subscription not found' });
+    }
     
     res.status(204).send();
   } catch (error) {
@@ -161,12 +164,7 @@ const getSubscriptionStats = async (req, res) => {
     const userId = req.user.id;
     
     // Get total monthly spending
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        userId: userId,
-        active: true
-      }
-    });
+    const subscriptions = await query('SELECT * FROM subscriptions WHERE userId = ? AND status = ?', [userId, 'active']);
     
     // Calculate monthly spending
     const monthlyTotal = subscriptions.reduce((total, sub) => {
@@ -221,10 +219,10 @@ const getSubscriptionStats = async (req, res) => {
     
     const upcomingRenewals = subscriptions
       .filter(sub => {
-        const renewalDate = new Date(sub.renewalDate);
+        const renewalDate = new Date(sub.due_date);
         return renewalDate >= today && renewalDate <= nextMonth;
       })
-      .sort((a, b) => new Date(a.renewalDate) - new Date(b.renewalDate));
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
     
     res.json({
       monthlyTotal,
@@ -236,13 +234,4 @@ const getSubscriptionStats = async (req, res) => {
     console.error('Error fetching subscription stats:', error);
     res.status(500).json({ message: 'Failed to fetch subscription statistics' });
   }
-};
-
-module.exports = {
-  getSubscriptions,
-  getSubscription,
-  createSubscription,
-  updateSubscription,
-  deleteSubscription,
-  getSubscriptionStats
 };

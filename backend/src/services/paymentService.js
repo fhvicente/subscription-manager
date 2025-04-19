@@ -1,13 +1,44 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const prisma = require('../utils/prisma');
+import Stripe from 'stripe';
+import { get, run, query } from '../db/database.js';
+
+// Safely initialize Stripe if API key is available
+let stripe;
+try {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (apiKey && apiKey.startsWith('sk_')) {
+    stripe = new Stripe(apiKey);
+    console.log('Stripe API initialized successfully');
+  } else {
+    console.warn('Stripe API key not properly configured. Payment features will be simulated.');
+    // Create a mock Stripe object for development
+    stripe = {
+      customers: {
+        create: async () => ({ id: 'cus_mock_' + Date.now() })
+      },
+      checkout: {
+        sessions: {
+          create: async () => ({ 
+            id: 'cs_mock_' + Date.now(),
+            url: process.env.FRONTEND_URL + '/mock-checkout'
+          })
+        }
+      },
+      webhooks: {
+        constructEvent: () => ({ type: 'mock.event', data: { object: {} } })
+      }
+    };
+  }
+} catch (error) {
+  console.error('Error initializing Stripe:', error);
+  // Create a minimal mock object to prevent crashes
+  stripe = { customers: {}, checkout: { sessions: {} }, webhooks: {} };
+}
 
 // Create a Stripe checkout session for subscription
 const createCheckoutSession = async (userId, plan) => {
   try {
     // Get user
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
 
     if (!user) {
       throw new Error('User not found');
@@ -33,10 +64,10 @@ const createCheckoutSession = async (userId, plan) => {
       customerId = customer.id;
       
       // Update user with Stripe customer ID
-      await prisma.user.update({
-        where: { id: userId },
-        data: { stripeCustomerId: customerId }
-      });
+      await run(
+        'UPDATE users SET stripeCustomerId = ? WHERE id = ?',
+        [customerId, userId]
+      );
     }
 
     // Create checkout session
@@ -71,24 +102,31 @@ const handleWebhookEvent = async (event) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        const userId = session.metadata.userId;
-        const plan = session.metadata.plan;
+        const userId = session.metadata?.userId;
+        const plan = session.metadata?.plan;
+        
+        if (!userId) {
+          console.warn('No userId found in session metadata');
+          break;
+        }
         
         // Update user plan
-        await prisma.user.update({
-          where: { id: userId },
-          data: { plan: 'premium' }
-        });
+        await run(
+          'UPDATE users SET plan = ? WHERE id = ?',
+          ['premium', userId]
+        );
         
         // Create payment log
-        await prisma.paymentLog.create({
-          data: {
-            userId: userId,
-            amount: session.amount_total / 100, // Convert from cents
-            status: 'success',
-            stripeSessionId: session.id
-          }
-        });
+        await run(
+          `INSERT INTO payment_logs (userId, amount, status, stripeSessionId) 
+           VALUES (?, ?, ?, ?)`,
+          [
+            userId,
+            session.amount_total ? session.amount_total / 100 : 0, // Convert from cents
+            'success',
+            session.id
+          ]
+        );
         
         break;
       }
@@ -98,20 +136,23 @@ const handleWebhookEvent = async (event) => {
         const customerId = invoice.customer;
         
         // Find user by Stripe customer ID
-        const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId }
-        });
+        const user = await get(
+          'SELECT * FROM users WHERE stripeCustomerId = ?',
+          [customerId]
+        );
         
         if (user) {
           // Create payment log
-          await prisma.paymentLog.create({
-            data: {
-              userId: user.id,
-              amount: invoice.amount_due / 100, // Convert from cents
-              status: 'failed',
-              stripeSessionId: invoice.id
-            }
-          });
+          await run(
+            `INSERT INTO payment_logs (userId, amount, status, stripeSessionId) 
+             VALUES (?, ?, ?, ?)`,
+            [
+              user.id,
+              invoice.amount_due ? invoice.amount_due / 100 : 0, // Convert from cents
+              'failed',
+              invoice.id
+            ]
+          );
         }
         
         break;
@@ -122,16 +163,17 @@ const handleWebhookEvent = async (event) => {
         const customerId = subscription.customer;
         
         // Find user by Stripe customer ID
-        const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId }
-        });
+        const user = await get(
+          'SELECT * FROM users WHERE stripeCustomerId = ?',
+          [customerId]
+        );
         
         if (user) {
           // Downgrade user to free plan
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { plan: 'free' }
-          });
+          await run(
+            'UPDATE users SET plan = ? WHERE id = ?',
+            ['free', user.id]
+          );
         }
         
         break;
@@ -145,7 +187,7 @@ const handleWebhookEvent = async (event) => {
   }
 };
 
-module.exports = {
+export {
   createCheckoutSession,
   handleWebhookEvent
 };

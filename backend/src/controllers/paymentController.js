@@ -1,5 +1,38 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const prisma = require('../utils/prisma');
+import Stripe from 'stripe';
+import { get, run, query } from '../db/database.js';
+
+// Safely initialize Stripe if API key is available
+let stripe;
+try {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (apiKey && apiKey.startsWith('sk_')) {
+    stripe = new Stripe(apiKey);
+    console.log('Stripe API initialized successfully in payment controller');
+  } else {
+    console.warn('Stripe API key not properly configured. Payment features will be simulated.');
+    // Create a mock Stripe object for development
+    stripe = {
+      customers: {
+        create: async () => ({ id: 'cus_mock_' + Date.now() })
+      },
+      checkout: {
+        sessions: {
+          create: async () => ({ 
+            id: 'cs_mock_' + Date.now(),
+            url: process.env.FRONTEND_URL + '/mock-checkout'
+          })
+        }
+      },
+      webhooks: {
+        constructEvent: () => ({ type: 'mock.event', data: { object: {} } })
+      }
+    };
+  }
+} catch (error) {
+  console.error('Error initializing Stripe in payment controller:', error);
+  // Create a minimal mock object to prevent crashes
+  stripe = { customers: {}, checkout: { sessions: {} }, webhooks: {} };
+}
 
 // Create a checkout session for subscription purchase
 const createCheckoutSession = async (req, res) => {
@@ -12,9 +45,7 @@ const createCheckoutSession = async (req, res) => {
     }
     
     // Get user
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const user = await get('SELECT * FROM users WHERE id = ?', [userId]);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -40,10 +71,10 @@ const createCheckoutSession = async (req, res) => {
       customerId = customer.id;
       
       // Update user with Stripe customer ID
-      await prisma.user.update({
-        where: { id: userId },
-        data: { stripeCustomerId: customerId }
-      });
+      await run(
+        'UPDATE users SET stripeCustomerId = ? WHERE id = ?',
+        [customerId, userId]
+      );
     }
     
     // Create checkout session
@@ -77,57 +108,65 @@ const createCheckoutSession = async (req, res) => {
 
 // Handle Stripe webhook events
 const handleWebhook = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  
-  let event;
-  
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
-    return res.status(400).json({ message: `Webhook Error: ${err.message}` });
-  }
-  
-  try {
+    let event;
+    
+    // If we have a valid Stripe API key, attempt to verify the webhook
+    if (process.env.STRIPE_WEBHOOK_SECRET) {
+      const sig = req.headers['stripe-signature'];
+      try {
+        event = stripe.webhooks.constructEvent(
+          req.body,
+          sig,
+          process.env.STRIPE_WEBHOOK_SECRET
+        );
+      } catch (err) {
+        console.error(`Webhook Error: ${err.message}`);
+        return res.status(400).json({ message: `Webhook Error: ${err.message}` });
+      }
+    } else {
+      // For development without a webhook secret, just parse the body
+      console.warn('STRIPE_WEBHOOK_SECRET not set. Skipping signature verification.');
+      event = req.body;
+    }
+    
     // Handle the event
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
         
         // Extract user ID from metadata
-        const userId = session.metadata.userId;
-        const plan = session.metadata.plan;
+        const userId = session.metadata?.userId;
+        const plan = session.metadata?.plan;
         
         if (!userId) {
           console.error('No userId found in session metadata');
           break;
         }
         
+        // Calculate premium until date
+        const premiumUntil = plan === 'yearly' 
+          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) 
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        
         // Update user plan
-        await prisma.user.update({
-          where: { id: userId },
-          data: { 
-            plan: 'premium',
-            premiumUntil: plan === 'yearly' 
-              ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) 
-              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          }
-        });
+        await run(
+          'UPDATE users SET plan = ?, premiumUntil = ? WHERE id = ?',
+          ['premium', premiumUntil.toISOString(), userId]
+        );
         
         // Create payment log
-        await prisma.paymentLog.create({
-          data: {
-            userId: userId,
-            amount: session.amount_total / 100, // Convert from cents
-            status: 'success',
-            stripeSessionId: session.id,
-            plan: plan
-          }
-        });
+        await run(
+          `INSERT INTO payment_logs (userId, amount, status, stripeSessionId, plan) 
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            userId,
+            session.amount_total ? session.amount_total / 100 : 0, // Convert from cents
+            'success',
+            session.id,
+            plan
+          ]
+        );
         
         break;
       }
@@ -137,20 +176,23 @@ const handleWebhook = async (req, res) => {
         const customerId = invoice.customer;
         
         // Find user by Stripe customer ID
-        const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId }
-        });
+        const user = await get(
+          'SELECT * FROM users WHERE stripeCustomerId = ?',
+          [customerId]
+        );
         
         if (user) {
           // Create payment log
-          await prisma.paymentLog.create({
-            data: {
-              userId: user.id,
-              amount: invoice.amount_due / 100, // Convert from cents
-              status: 'failed',
-              stripeSessionId: invoice.id
-            }
-          });
+          await run(
+            `INSERT INTO payment_logs (userId, amount, status, stripeSessionId) 
+             VALUES (?, ?, ?, ?)`,
+            [
+              user.id,
+              invoice.amount_due ? invoice.amount_due / 100 : 0, // Convert from cents
+              'failed',
+              invoice.id
+            ]
+          );
         }
         
         break;
@@ -161,19 +203,17 @@ const handleWebhook = async (req, res) => {
         const customerId = subscription.customer;
         
         // Find user by Stripe customer ID
-        const user = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId }
-        });
+        const user = await get(
+          'SELECT * FROM users WHERE stripeCustomerId = ?',
+          [customerId]
+        );
         
         if (user) {
           // Downgrade user to free plan
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { 
-              plan: 'free',
-              premiumUntil: null
-            }
-          });
+          await run(
+            'UPDATE users SET plan = ?, premiumUntil = ? WHERE id = ?',
+            ['free', null, user.id]
+          );
         }
         
         break;
@@ -192,14 +232,10 @@ const getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const payments = await prisma.paymentLog.findMany({
-      where: {
-        userId: userId
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const payments = await query(
+      'SELECT * FROM payment_logs WHERE userId = ? ORDER BY createdAt DESC',
+      [userId]
+    );
     
     res.json(payments);
   } catch (error) {
@@ -213,13 +249,10 @@ const getSubscriptionStatus = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        plan: true,
-        premiumUntil: true
-      }
-    });
+    const user = await get(
+      'SELECT plan, premiumUntil FROM users WHERE id = ?',
+      [userId]
+    );
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -236,7 +269,7 @@ const getSubscriptionStatus = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   createCheckoutSession,
   handleWebhook,
   getPaymentHistory,

@@ -1,26 +1,13 @@
-const express = require('express');
+import express from 'express';
+import authMiddleware from '../middleware.js';
+import { getNotificationSettings, updateNotificationSettings, sendTestNotification, checkUpcomingRenewals } from '../controllers/notificationController.js';
+
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
-const notificationController = require('../controllers/notificationController');
 
-// Apply authentication middleware to all notification routes except cron endpoint
-router.use('/check-renewals', (req, res, next) => {
-    // Skip authentication for cron job endpoint
-    next();
-});
+// Protected routes
+router.get('/settings', authMiddleware, getNotificationSettings);
+router.put('/settings', authMiddleware, updateNotificationSettings);
+router.post('/test', authMiddleware, sendTestNotification);
+router.get('/check-renewals', checkUpcomingRenewals);
 
-router.use(authenticate);
-
-// Get notification settings
-router.get('/', notificationController.getNotificationSettings);
-
-// Update notification settings
-router.put('/', notificationController.updateNotificationSettings);
-
-// Send test notification
-router.post('/test', notificationController.sendTestNotification);
-
-// Endpoint for cron job to check upcoming renewals
-router.post('/check-renewals', notificationController.checkUpcomingRenewals);
-
-module.exports = router;
+export default router;

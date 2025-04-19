@@ -1,24 +1,13 @@
-const express = require('express');
+import express from 'express';
+import authMiddleware from '../middleware.js';
+import { createCheckoutSession, handleWebhook, getPaymentHistory, getSubscriptionStatus } from '../controllers/paymentController.js';
+
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
-const paymentController = require('../controllers/paymentController');
 
-// Apply authentication middleware to all routes except webhook
-router.use('/webhook', express.raw({ type: 'application/json' }));
+// Protected routes
+router.get('/history', authMiddleware, getPaymentHistory);
+router.post('/session', authMiddleware, createCheckoutSession);
+router.post('/webhook', handleWebhook);
+router.get('/status', authMiddleware, getSubscriptionStatus);
 
-// Webhook doesn't need authentication
-router.post('/webhook', paymentController.handleWebhook);
-
-// All other routes require authentication
-router.use(authenticate);
-
-// Create checkout session
-router.post('/create-checkout-session', paymentController.createCheckoutSession);
-
-// Get payment history
-router.get('/history', paymentController.getPaymentHistory);
-
-// Get subscription status
-router.get('/subscription-status', paymentController.getSubscriptionStatus);
-
-module.exports = router;
+export default router;

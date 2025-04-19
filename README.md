@@ -1,195 +1,108 @@
-# Gestor Simples de Assinaturas
+# Subscription Manager
 
-Um aplicativo de gerenciamento de assinaturas para ajudar você a controlar seus gastos e evitar cobranças desnecessárias.
+A simple and effective tool to manage your subscriptions and save money.
 
-![Gestor Simples de Assinaturas](https://placehold.co/600x400/png?text=Gestor+Simples+de+Assinaturas)
+## Technology Stack
 
-## Sobre o Projeto
+- **Backend**: Node.js, Express, Prisma ORM, SQLite
+- **Frontend**: Next.js, React, TailwindCSS
+- **Authentication**: Custom JWT-based authentication
+- **Email Notifications**: SendGrid
+- **Payments**: Stripe
 
-Gestor Simples de Assinaturas é uma aplicação full-stack que permite aos usuários rastrear e gerenciar suas assinaturas de serviços, receber notificações de renovação e visualizar relatórios de gastos. O objetivo é ajudar os usuários a evitar cobranças desnecessárias e ter uma visão clara de seus gastos recorrentes.
+## Features
 
-### Funcionalidades Principais
+- User authentication with JWT
+- Subscription management
+- Subscription renewal notifications
+- Payment processing
+- Usage statistics and reports
 
-- Gerenciamento completo de assinaturas (adicionar, editar, excluir)
-- Dashboard com calendário de renovações e gráficos de gastos
-- Notificações automáticas de renovação
-- Relatórios de gastos por categoria
-- Modelo freemium (nível gratuito com recursos limitados)
+## Getting Started
 
-## Tecnologias Utilizadas
+### Prerequisites
 
-### Frontend
-- Next.js com TypeScript
-- TailwindCSS e ShadCN UI para estilização
-- Chart.js para visualizações e gráficos
-- Clerk para autenticação
-- Plausible para analytics
+- Node.js (v18 or higher)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/subscription-manager.git
+   cd subscription-manager
+   ```
+
+2. Install backend dependencies:
+   ```bash
+   cd backend
+   npm install
+   ```
+
+3. Set up the SQLite database:
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev --name init
+   ```
+
+4. Initialize the database with sample data:
+   ```bash
+   node scripts/init-db.js
+   ```
+
+5. Start the backend server:
+   ```bash
+   npm run dev
+   ```
+
+6. Open a new terminal and install frontend dependencies:
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+
+7. Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
+
+8. Access the application at [http://localhost:3000](http://localhost:3000)
+
+### Sample Accounts
+
+After initializing the database, you can use these accounts to test the application:
+
+- Admin: admin@example.com / admin123
+- User: user@example.com / test123
+
+## Development
 
 ### Backend
-- Node.js com Express
-- PostgreSQL como banco de dados
-- Prisma ORM para acesso ao banco de dados
-- SendGrid para envio de emails
-- Stripe para processamento de pagamentos
 
-## Pré-requisitos
+The backend is an Express.js application with a RESTful API structure using the following main components:
 
-- Node.js 20.x ou superior
-- PostgreSQL 15.x ou superior
-- Contas de serviço:
-  - Clerk (autenticação)
-  - SendGrid (emails)
-  - Stripe (pagamentos)
-  - Plausible (analytics)
+- **Prisma**: ORM for database interactions
+- **JWT**: Authentication mechanism
+- **Express**: Web framework
+- **SQLite**: Database
 
-## Instalação e Configuração
+### Frontend
 
-### Usando Docker (Recomendado)
+The frontend is a Next.js application using:
 
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/seu-usuario/gestor-simples-assinaturas.git
-   cd gestor-simples-assinaturas
-   ```
+- **React**: UI library
+- **TailwindCSS**: Styling
+- **Axios**: API requests
+- **React Hook Form**: Form handling and validation
 
-2. Configure as variáveis de ambiente:
-   - Copie os arquivos `.env.example` para `.env` tanto no diretório `backend` quanto no `frontend`
-   - Preencha as variáveis com suas credenciais e configurações
+## API Documentation
 
-3. Inicie os contêineres com Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. Acesse a aplicação em `http://localhost:3000`
-
-### Instalação Manual
-
-#### Backend
-
-1. Navegue até o diretório do backend:
-   ```bash
-   cd gestor-simples-assinaturas/backend
-   ```
-
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-
-3. Configure as variáveis de ambiente:
-   - Copie `.env.example` para `.env`
-   - Preencha as variáveis com suas credenciais e configurações
-
-4. Execute as migrações do banco de dados:
-   ```bash
-   npx prisma migrate dev
-   ```
-
-5. Inicie o servidor:
-   ```bash
-   npm run dev
-   ```
-
-#### Frontend
-
-1. Navegue até o diretório do frontend:
-   ```bash
-   cd gestor-simples-assinaturas/frontend
-   ```
-
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-
-3. Configure as variáveis de ambiente:
-   - Copie `.env.local.example` para `.env.local`
-   - Preencha as variáveis com suas credenciais e configurações
-
-4. Inicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
-
-5. Acesse a aplicação em `http://localhost:3000`
-
-## Estrutura do Projeto
-
-```
-gestor-simples-assinaturas/
-├── backend/                  # API Node.js/Express
-│   ├── prisma/               # Esquema e migrações do Prisma
-│   ├── src/
-│   │   ├── controllers/      # Controladores da API
-│   │   ├── middleware/       # Middlewares (auth, etc.)
-│   │   ├── routes/           # Rotas da API
-│   │   ├── services/         # Serviços (email, pagamento)
-│   │   └── utils/            # Utilitários
-│   └── tests/                # Testes da API
-├── frontend/                 # Aplicação Next.js
-│   ├── public/               # Arquivos estáticos
-│   └── src/
-│       ├── app/              # Páginas e layouts
-│       ├── components/       # Componentes React
-│       ├── hooks/            # Hooks personalizados
-│       └── lib/              # Bibliotecas e utilitários
-└── docker-compose.yml        # Configuração Docker
-```
-
-## API Endpoints
-
-### Autenticação
-- `POST /api/auth/webhook` - Webhook do Clerk para eventos de autenticação
-
-### Assinaturas
-- `GET /api/subscriptions` - Listar todas as assinaturas do usuário
-- `POST /api/subscriptions` - Criar nova assinatura
-- `GET /api/subscriptions/:id` - Obter detalhes de uma assinatura
-- `PUT /api/subscriptions/:id` - Atualizar uma assinatura
-- `DELETE /api/subscriptions/:id` - Excluir uma assinatura
-- `GET /api/subscriptions/stats` - Obter estatísticas de assinaturas
-
-### Notificações
-- `GET /api/notifications` - Obter configurações de notificação
-- `PUT /api/notifications` - Atualizar configurações de notificação
-- `POST /api/notifications/test` - Enviar notificação de teste
-- `POST /api/notifications/check-renewals` - Verificar renovações próximas (para cron)
-
-### Pagamentos
-- `POST /api/payments/create-checkout-session` - Criar sessão de checkout do Stripe
-- `POST /api/payments/webhook` - Webhook do Stripe para eventos de pagamento
-- `GET /api/payments/history` - Obter histórico de pagamentos
-- `GET /api/payments/subscription-status` - Obter status da assinatura premium
-
-### Usuários
-- `GET /api/users/profile` - Obter perfil do usuário
-- `PUT /api/users/profile` - Atualizar perfil do usuário
+See the [API.md](API.md) file for detailed API documentation.
 
 ## Deployment
 
-Para informações detalhadas sobre como implantar a aplicação em ambiente de produção, consulte o arquivo [deployment.md](deployment.md).
+See the [deployment.md](deployment.md) file for deployment instructions.
 
-## Testes
+## Contributing
 
-### Backend
-```bash
-cd backend
-npm test
-```
-
-### Frontend
-```bash
-cd frontend
-npm test
-```
-
-## Licença
-
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
-
-## Contato
-
-Seu Nome - seu.email@exemplo.com
-
-Link do Projeto: [https://github.com/seu-usuario/gestor-simples-assinaturas](https://github.com/seu-usuario/gestor-simples-assinaturas)
+Contributions are welcome! Please feel free to submit a Pull Request.

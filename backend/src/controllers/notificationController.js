@@ -7,7 +7,7 @@ const getNotificationSettings = async (req, res) => {
         const userId = req.user.id;
 
         const settings = await get(
-            'SELECT * FROM notification_settings WHERE userId = ?',
+            'SELECT * FROM notification_settings WHERE user_id = ?',
             [userId]
         );
 
@@ -15,18 +15,19 @@ const getNotificationSettings = async (req, res) => {
             // Create default settings if none exist
             const result = await run(
                 `INSERT INTO notification_settings 
-                (userId, emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal) 
-                VALUES (?, ?, ?, ?, ?)`,
-                [userId, true, false, false, 3]
+                (id, user_id, email_enabled, sms_enabled, push_enabled, days_before_renewal) 
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [generateUUID(), userId, 1, 0, 0, 3]
             );
             
             const defaultSettings = {
                 id: result.id,
-                userId,
-                emailEnabled: true,
-                smsEnabled: false,
-                pushEnabled: false,
-                daysBeforeRenewal: 3
+                user_id: userId,
+                email_enabled: 1,
+                sms_enabled: 0,
+                push_enabled: 0,
+                days_before_renewal: 3,
+                phone_number: null
             };
             
             return res.json(defaultSettings);
@@ -38,15 +39,23 @@ const getNotificationSettings = async (req, res) => {
     }
 };
 
+// Function to generate a simple UUID
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 // Update notification settings
 const updateNotificationSettings = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal, phoneNumber } = req.body;
+        const { email_enabled, sms_enabled, push_enabled, days_before_renewal, phone_number } = req.body;
 
         // Find existing settings
         const existingSettings = await get(
-            'SELECT * FROM notification_settings WHERE userId = ?',
+            'SELECT * FROM notification_settings WHERE user_id = ?',
             [userId]
         );
 
@@ -56,44 +65,46 @@ const updateNotificationSettings = async (req, res) => {
             // Update existing settings
             await run(
                 `UPDATE notification_settings 
-                SET emailEnabled = ?, smsEnabled = ?, pushEnabled = ?, 
-                daysBeforeRenewal = ?, phoneNumber = ?
-                WHERE userId = ?`,
+                SET email_enabled = ?, sms_enabled = ?, push_enabled = ?, 
+                days_before_renewal = ?, phone_number = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?`,
                 [
-                    emailEnabled !== undefined ? emailEnabled : existingSettings.emailEnabled,
-                    smsEnabled !== undefined ? smsEnabled : existingSettings.smsEnabled,
-                    pushEnabled !== undefined ? pushEnabled : existingSettings.pushEnabled,
-                    daysBeforeRenewal !== undefined ? daysBeforeRenewal : existingSettings.daysBeforeRenewal,
-                    phoneNumber !== undefined ? phoneNumber : existingSettings.phoneNumber,
+                    email_enabled !== undefined ? email_enabled : existingSettings.email_enabled,
+                    sms_enabled !== undefined ? sms_enabled : existingSettings.sms_enabled,
+                    push_enabled !== undefined ? push_enabled : existingSettings.push_enabled,
+                    days_before_renewal !== undefined ? days_before_renewal : existingSettings.days_before_renewal,
+                    phone_number !== undefined ? phone_number : existingSettings.phone_number,
                     userId
                 ]
             );
             
             // Get updated settings
             settings = await get(
-                'SELECT * FROM notification_settings WHERE userId = ?',
+                'SELECT * FROM notification_settings WHERE user_id = ?',
                 [userId]
             );
         } else {
-            // Create new settings
+            // Create new settings with UUID
+            const newId = generateUUID();
             const result = await run(
                 `INSERT INTO notification_settings 
-                (userId, emailEnabled, smsEnabled, pushEnabled, daysBeforeRenewal, phoneNumber) 
-                VALUES (?, ?, ?, ?, ?, ?)`,
+                (id, user_id, email_enabled, sms_enabled, push_enabled, days_before_renewal, phone_number) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
+                    newId,
                     userId,
-                    emailEnabled !== undefined ? emailEnabled : true,
-                    smsEnabled !== undefined ? smsEnabled : false,
-                    pushEnabled !== undefined ? pushEnabled : false,
-                    daysBeforeRenewal !== undefined ? daysBeforeRenewal : 3,
-                    phoneNumber
+                    email_enabled !== undefined ? email_enabled : 1,
+                    sms_enabled !== undefined ? sms_enabled : 0,
+                    push_enabled !== undefined ? push_enabled : 0,
+                    days_before_renewal !== undefined ? days_before_renewal : 3,
+                    phone_number
                 ]
             );
             
             // Get new settings
             settings = await get(
-                'SELECT * FROM notification_settings WHERE userId = ?',
-                [userId]
+                'SELECT * FROM notification_settings WHERE id = ?',
+                [newId]
             );
         }
 

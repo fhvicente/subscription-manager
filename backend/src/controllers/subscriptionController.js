@@ -11,7 +11,8 @@ function generateUUID() {
 // Get all subscriptions
 export const getSubscriptions = async (req, res) => {
   try {
-    const subscriptions = await query('SELECT * FROM subscriptions ORDER BY due_date ASC');
+    const userId = req.user.id;
+    const subscriptions = await query('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY due_date ASC', [userId]);
     res.json(subscriptions);
   } catch (error) {
     console.error('Error fetching subscriptions:', error);
@@ -23,8 +24,9 @@ export const getSubscriptions = async (req, res) => {
 export const getSubscriptionById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
-    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ? AND user_id = ?', [id, userId]);
     
     if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
@@ -40,7 +42,8 @@ export const getSubscriptionById = async (req, res) => {
 // Create a new subscription
 export const createSubscription = async (req, res) => {
   try {
-    const { name, description, price, dueDate, status = 'active' } = req.body;
+    const { name, description, price, dueDate, status = 'active', category } = req.body;
+    const userId = req.user.id;
     
     // Validate required fields
     if (!name || !price || !dueDate) {
@@ -49,9 +52,11 @@ export const createSubscription = async (req, res) => {
     
     const id = generateUUID();
     
+    console.log('Creating subscription with data:', { name, description, price, dueDate, status, category, userId });
+    
     const result = await run(
-      'INSERT INTO subscriptions (id, name, description, price, due_date, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, name, description, price, dueDate, status]
+      'INSERT INTO subscriptions (id, user_id, name, description, price, due_date, status, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, userId, name, description, price, dueDate, status, category]
     );
     
     const newSubscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
@@ -67,10 +72,11 @@ export const createSubscription = async (req, res) => {
 export const updateSubscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, dueDate, status } = req.body;
+    const userId = req.user.id;
+    const { name, description, price, dueDate, status, category } = req.body;
     
-    // Check if subscription exists
-    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    // Check if subscription exists and belongs to user
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ? AND user_id = ?', [id, userId]);
     
     if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
@@ -105,9 +111,14 @@ export const updateSubscription = async (req, res) => {
       params.push(status);
     }
     
+    if (category !== undefined) {
+      updateFields.push('category = ?');
+      params.push(category);
+    }
+    
     updateFields.push('updated_at = CURRENT_TIMESTAMP');
     
-    // Add ID as the last parameter
+    // Add ID and userId as the last parameters
     params.push(id);
     
     // Return if nothing to update
@@ -116,8 +127,8 @@ export const updateSubscription = async (req, res) => {
     }
     
     const result = await run(
-      `UPDATE subscriptions SET ${updateFields.join(', ')} WHERE id = ?`,
-      params
+      `UPDATE subscriptions SET ${updateFields.join(', ')} WHERE id = ? AND user_id = ?`,
+      [...params, userId]
     );
     
     if (result.changes === 0) {
@@ -137,15 +148,16 @@ export const updateSubscription = async (req, res) => {
 export const deleteSubscription = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
-    // Check if subscription exists
-    const subscription = await get('SELECT * FROM subscriptions WHERE id = ?', [id]);
+    // Check if subscription exists and belongs to user
+    const subscription = await get('SELECT * FROM subscriptions WHERE id = ? AND user_id = ?', [id, userId]);
     
     if (!subscription) {
       return res.status(404).json({ message: 'Subscription not found' });
     }
     
-    const result = await run('DELETE FROM subscriptions WHERE id = ?', [id]);
+    const result = await run('DELETE FROM subscriptions WHERE id = ? AND user_id = ?', [id, userId]);
     
     if (result.changes === 0) {
       return res.status(404).json({ message: 'Subscription not found' });

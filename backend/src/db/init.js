@@ -24,13 +24,16 @@ CREATE TABLE IF NOT EXISTS users (
 -- Subscriptions table
 CREATE TABLE IF NOT EXISTS subscriptions (
   id TEXT PRIMARY KEY,
+  user_id TEXT,
   name TEXT NOT NULL,
   description TEXT,
   due_date TIMESTAMP NOT NULL,
   price REAL NOT NULL,
   status TEXT DEFAULT 'active',
+  category TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 -- Notification settings table
@@ -139,8 +142,8 @@ async function initializeDatabase() {
                     fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
 
                     db.run(
-                      'INSERT OR IGNORE INTO subscriptions (id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?)',
-                      [netflixId, 'Netflix', 'Streaming service', thirtyDaysFromNow.toISOString(), 15.99, 'active'],
+                      'INSERT OR IGNORE INTO subscriptions (id, user_id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                      [netflixId, testUserId, 'Netflix', 'Streaming service', thirtyDaysFromNow.toISOString(), 15.99, 'active'],
                       function(err) {
                         if (err) {
                           console.error('Error adding Netflix subscription:', err.message);
@@ -149,8 +152,8 @@ async function initializeDatabase() {
                         console.log('Netflix subscription created or already exists');
 
                         db.run(
-                          'INSERT OR IGNORE INTO subscriptions (id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?)',
-                          [spotifyId, 'Spotify', 'Music streaming', fourteenDaysFromNow.toISOString(), 9.99, 'active'],
+                          'INSERT OR IGNORE INTO subscriptions (id, user_id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                          [spotifyId, testUserId, 'Spotify', 'Music streaming', fourteenDaysFromNow.toISOString(), 9.99, 'active'],
                           function(err) {
                             if (err) {
                               console.error('Error adding Spotify subscription:', err.message);

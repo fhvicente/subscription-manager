@@ -7,7 +7,9 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "init-db": "node src/db/init.js"
+    "init-db": "node src/db/init.js",
+    "refresh-db": "node scripts/refresh-db.js",
+    "add-category": "node scripts/add-category.js"
   },
   "keywords": [],
   "author": "",

@@ -17,18 +17,30 @@ export const authMiddleware = async (req, res, next) => {
     // Get token from headers
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log(`Auth error: No token provided for route ${req.path}`);
       return res.status(401).json({ error: 'Unauthorized: No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
     
+    if (!token || token === 'undefined' || token === 'null') {
+      console.log(`Auth error: Invalid token format for route ${req.path}`);
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+    
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!decoded || !decoded.id) {
+      console.log(`Auth error: Token payload invalid for route ${req.path}`);
+      return res.status(401).json({ error: 'Invalid token payload' });
+    }
     
     // Check if user exists
     const user = await get('SELECT * FROM users WHERE id = ?', [decoded.id]);
 
     if (!user) {
+      console.log(`Auth error: User not found for ID ${decoded.id}`);
       return res.status(401).json({ error: 'User not found' });
     }
 
@@ -36,10 +48,18 @@ export const authMiddleware = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.log(`Auth error: ${error.name} - ${error.message} for route ${req.path}`);
+    
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      return res.status(401).json({ 
+        error: 'Invalid or expired token',
+        details: error.message
+      });
     }
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ 
+      error: 'Server error', 
+      details: error.message
+    });
   }
 };
 

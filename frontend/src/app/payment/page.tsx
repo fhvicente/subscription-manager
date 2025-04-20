@@ -45,12 +45,16 @@ export default function PaymentPage() {
     setProcessingPlan(planId);
     try {
       const session = await createCheckoutSession(planId);
+      
       if (session && session.url) {
         // Redirect to Stripe Checkout
         window.location.href = session.url;
+      } else {
+        alert('Não foi possível iniciar o processo de pagamento. Por favor, tente novamente.');
       }
     } catch (error) {
-      console.error('Error creating checkout session:', error);
+      console.error('Erro ao criar sessão de checkout:', error);
+      alert('Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.');
     } finally {
       setProcessingPlan(null);
     }

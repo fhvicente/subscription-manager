@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import { usePayment } from "@/hooks/usePayment";
 
 // Interfaces para tipagem
 interface NotificationSettings {
@@ -27,18 +28,27 @@ interface UserProfile {
   email: string;
   name: string;
   plan: string;
+  premiumUntil?: string;
   created_at?: string;
   updated_at?: string;
 }
 
+interface SubscriptionStatus {
+  plan: string;
+  premiumUntil?: string;
+  isActive: boolean;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
+  const { getSubscriptionStatus, cancelSubscription } = usePayment();
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [showSuccessProfile, setShowSuccessProfile] = useState(false);
   const [showSuccessNotifications, setShowSuccessNotifications] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
   const [error, setError] = useState("");
 
@@ -55,6 +65,28 @@ export default function SettingsPage() {
     phoneNumber: ""
   });
 
+  // Buscar status da assinatura
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      setSubscriptionStatus(status);
+      return status;
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+      return null;
+    }
+  };
+
+  // Força uma atualização ao montar o componente e a cada 30 segundos
+  useEffect(() => {
+    fetchSubscriptionStatus();
+    
+    // Verificar as configurações de usuário periodicamente
+    const intervalId = setInterval(fetchSubscriptionStatus, 30000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Buscar dados do usuário e configurações de notificação
   useEffect(() => {
     const fetchUserData = async () => {
@@ -70,6 +102,9 @@ export default function SettingsPage() {
           name: userData.name
         });
 
+        // Buscar status da assinatura
+        const status = await fetchSubscriptionStatus();
+        
         // Buscar configurações de notificação
         try {
           const notificationsResponse = await api.get('/notifications/settings');
@@ -346,18 +381,45 @@ export default function SettingsPage() {
         <Card className="bg-white shadow-sm p-6">
           <div className="space-y-4">
             <div>
-              <h3 className="font-medium text-slate-900">Plano Atual: {user?.plan === 'free' ? 'Gratuito' : 'Premium'}</h3>
-              <p className="text-sm text-slate-500">
-                {user?.plan === 'free' 
+              <h3 className="font-medium text-slate-900">
+                Plano Atual: {subscriptionStatus?.plan === 'premium' ? 'Premium' : 'Gratuito'}
+              </h3>
+              {subscriptionStatus?.plan === 'premium' && subscriptionStatus.premiumUntil && (
+                <p className="text-sm text-slate-700 mt-1">
+                  <span className="font-medium">Válido até:</span> {new Date(subscriptionStatus.premiumUntil).toLocaleDateString('pt-BR')}
+                </p>
+              )}
+              <p className="text-sm text-slate-500 mt-2">
+                {subscriptionStatus?.plan !== 'premium' 
                   ? 'Limitado a 3 assinaturas. Atualize para o plano premium para recursos ilimitados.' 
                   : 'Você tem acesso a todos os recursos premium.'}
               </p>
             </div>
             
-            {user?.plan === 'free' && (
+            {subscriptionStatus?.plan !== 'premium' ? (
               <Button asChild>
                 <a href="/payment">Atualizar para Premium</a>
               </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Você pode cancelar seu plano Premium a qualquer momento. Após o cancelamento, você continuará tendo acesso aos recursos premium até o final do período pago.</p>
+                <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={async () => {
+                  if (confirm("Tem certeza que deseja cancelar seu plano Premium? Você continuará tendo acesso aos recursos premium até o final do período pago.")) {
+                    try {
+                      await cancelSubscription();
+                      alert("Seu plano foi cancelado com sucesso!");
+                      // Atualizar o status da assinatura após o cancelamento
+                      await fetchSubscriptionStatus();
+                      router.refresh();
+                    } catch (error) {
+                      console.error("Erro ao cancelar assinatura:", error);
+                      alert("Não foi possível cancelar sua assinatura. Tente novamente mais tarde.");
+                    }
+                  }
+                }}>
+                  Cancelar Assinatura
+                </Button>
+              </div>
             )}
           </div>
         </Card>

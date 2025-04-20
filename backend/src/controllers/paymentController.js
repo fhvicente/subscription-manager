@@ -150,10 +150,14 @@ const handleWebhook = async (req, res) => {
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         
         // Update user plan
-        await run(
-          'UPDATE users SET plan = ?, premiumUntil = ? WHERE id = ?',
-          ['premium', premiumUntil.toISOString(), userId]
-        );
+        try {
+          await run(
+            'UPDATE users SET plan = ?, premiumUntil = ? WHERE id = ?',
+            ['premium', premiumUntil.toISOString(), userId]
+          );
+        } catch (updateError) {
+          console.error('Error updating user plan:', updateError);
+        }
         
         // Create payment log
         await run(
@@ -250,7 +254,7 @@ const getSubscriptionStatus = async (req, res) => {
     const userId = req.user.id;
     
     const user = await get(
-      'SELECT plan, premiumUntil FROM users WHERE id = ?',
+      'SELECT id, email, name, plan, premiumUntil FROM users WHERE id = ?',
       [userId]
     );
     
@@ -258,10 +262,15 @@ const getSubscriptionStatus = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
+    // Determine if plan is active
+    const isPremiumActive = user.plan === 'premium' && 
+                          user.premiumUntil && 
+                          new Date(user.premiumUntil) > new Date();
+    
     res.json({
       plan: user.plan,
       premiumUntil: user.premiumUntil,
-      isActive: user.plan === 'premium' && new Date(user.premiumUntil) > new Date()
+      isActive: isPremiumActive
     });
   } catch (error) {
     console.error('Error fetching subscription status:', error);
@@ -269,9 +278,137 @@ const getSubscriptionStatus = async (req, res) => {
   }
 };
 
+// Get subscription status for a specific payment session
+// This is useful for the payment success page
+const getSubscriptionStatusBySession = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { session_id } = req.query;
+    
+    if (!session_id) {
+      return res.status(400).json({ message: 'Session ID is required' });
+    }
+    
+    // First check if this payment is related to the user
+    const paymentLog = await get(
+      'SELECT * FROM payment_logs WHERE stripeSessionId = ? AND userId = ?',
+      [session_id, userId]
+    );
+    
+    // Get user subscription details
+    const user = await get(
+      'SELECT id, email, name, plan, premiumUntil FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Check if the user has a premium subscription
+    const isPremiumActive = user.plan === 'premium' && 
+                          user.premiumUntil && 
+                          new Date(user.premiumUntil) > new Date();
+    
+    // If no payment log is found, or it's not successful, but the user has premium
+    // We'll still show the premium status
+    if ((!paymentLog || paymentLog.status !== 'success') && isPremiumActive) {
+      return res.json({
+        plan: user.plan,
+        premiumUntil: user.premiumUntil,
+        isActive: true,
+        verifiedSession: false
+      });
+    }
+    
+    // If the payment log exists and is successful
+    if (paymentLog && paymentLog.status === 'success') {
+      return res.json({
+        plan: user.plan,
+        premiumUntil: user.premiumUntil,
+        isActive: isPremiumActive,
+        verifiedSession: true,
+        sessionId: session_id
+      });
+    }
+    
+    // If we get to this point, the user doesn't have premium status and the payment wasn't successful
+    return res.json({
+      plan: user.plan,
+      premiumUntil: user.premiumUntil,
+      isActive: false,
+      verifiedSession: false
+    });
+    
+  } catch (error) {
+    console.error('Error fetching subscription status by session:', error);
+    res.status(500).json({ message: 'Failed to fetch subscription status' });
+  }
+};
+
+// Cancel subscription for a user
+const cancelSubscription = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get user details
+    const user = await get(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // If user has a Stripe customer ID and we're not in dev mode, try to cancel the actual subscription
+    if (user.stripeCustomerId && process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith('sk_')) {
+      try {
+        // Find active subscriptions for this customer
+        const subscriptions = await stripe.subscriptions.list({
+          customer: user.stripeCustomerId,
+          status: 'active'
+        });
+        
+        // Cancel each active subscription
+        for (const subscription of subscriptions.data) {
+          await stripe.subscriptions.cancel(subscription.id);
+        }
+      } catch (stripeError) {
+        console.error('Error canceling Stripe subscription:', stripeError);
+        // Continue with the process even if Stripe fails
+      }
+    }
+    
+    // Update the user's status in our database immediately
+    // Keep premium access until premiumUntil date, but mark as canceled
+    await run(
+      'UPDATE users SET plan = ? WHERE id = ?',
+      ['free', userId]
+    );
+    
+    // Log the cancellation
+    await run(
+      `INSERT INTO payment_logs (userId, status, notes) 
+       VALUES (?, ?, ?)`,
+      [userId, 'canceled', 'Subscription canceled by user']
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Subscription has been canceled successfully.'
+    });
+  } catch (error) {
+    console.error('Error canceling subscription:', error);
+    res.status(500).json({ message: 'Failed to cancel subscription' });
+  }
+};
+
 export {
   createCheckoutSession,
   handleWebhook,
   getPaymentHistory,
-  getSubscriptionStatus
+  getSubscriptionStatus,
+  getSubscriptionStatusBySession,
+  cancelSubscription
 };

@@ -22,8 +22,8 @@ export default function RootLayout({
         <AuthProvider>
             <ApiProvider>
                 <AnalyticsProvider>
-                    <html lang="en">
-                        <body className={inter.className}>{children}</body>
+                    <html lang="en" suppressHydrationWarning>
+                        <body className={inter.className} suppressHydrationWarning>{children}</body>
                     </html>        
                 </AnalyticsProvider>
             </ApiProvider>

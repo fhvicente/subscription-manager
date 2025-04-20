@@ -1,14 +1,15 @@
-import addStripeCustomerId from './migrations/add_stripe_customer_id.js';
-
 /**
  * Run all migrations in sequence
+ * 
+ * Este arquivo mantém o histórico de migrações e pode ser usado
+ * para adicionar futuras migrações conforme necessário.
  */
 async function runAllMigrations() {
   try {
     console.log('Starting database migrations...');
     
-    // Add migrations in order here
-    await addStripeCustomerId();
+    // Add future migrations in order here
+    // Exemplo: await newMigration();
     
     console.log('All migrations completed successfully!');
     return true;

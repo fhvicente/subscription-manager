@@ -1,5 +1,5 @@
 import { useApi } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface NotificationSettings {
     emailNotifications: boolean;
@@ -15,7 +15,7 @@ export function useNotificationSettings() {
     const [error, setError] = useState<string | null>(null);
 
     // Fetch notification settings
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         if (!api) return;
         
         setLoading(true);
@@ -29,7 +29,7 @@ export function useNotificationSettings() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [api]);
 
     // Update notification settings
     const updateSettings = async (settingsData: NotificationSettings): Promise<NotificationSettings | null> => {
@@ -46,7 +46,7 @@ export function useNotificationSettings() {
     };
 
     // Send test notification
-    const sendTestNotification = async (type: string): Promise<any> => {
+    const sendTestNotification = async (type: string): Promise<Record<string, unknown> | null> => {
         if (!api) return null;
         
         try {
@@ -62,7 +62,7 @@ export function useNotificationSettings() {
     useEffect(() => {
         if (!api) return;
         fetchSettings();
-    }, [api]);
+    }, [api, fetchSettings]);
 
     return {
         settings,

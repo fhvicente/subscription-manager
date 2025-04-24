@@ -45,7 +45,7 @@ export default function SignInPage() {
             <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg">
                 <div className="mb-6 text-center">
                     <h1 className="text-xl font-bold text-slate-900">Sign In</h1>
-                    <p className="text-slate-600">Welcome back to Subscription Manager</p>
+                    <p className="text-slate-600">Welcome back to SubTrack</p>
                 </div>
                 
                 {error && (
@@ -95,7 +95,7 @@ export default function SignInPage() {
                 </form>
                 
                 <div className="mt-6 text-center text-sm">
-                    <span className="text-slate-600">Don't have an account? </span>
+                    <span className="text-slate-600">Don&apos;t have an account? </span>
                     <Link href="/sign-up" className="font-medium text-slate-900 hover:underline">
                         Sign Up
                     </Link>

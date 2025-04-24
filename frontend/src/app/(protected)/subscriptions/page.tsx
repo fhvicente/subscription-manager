@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { Loader2, Trash2 } from "lucide-react";
 
-// Tipos
+// Types
 interface Subscription {
   id: string;
   name: string;
@@ -26,28 +26,28 @@ export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  // Fetch subscriptions on component mount
-  useEffect(() => {
-    fetchSubscriptions();
-  }, []);
-
   // Fetch subscriptions from API
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await api.get('/subscriptions');
       setSubscriptions(response.data);
     } catch (error) {
       console.error("Error fetching subscriptions:", error);
-      alert("Não foi possível carregar suas assinaturas. Tente novamente mais tarde.");
+      alert("Unable to load your subscriptions. Please try again later.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch subscriptions on component mount
+  useEffect(() => {
+    fetchSubscriptions();
+  }, [fetchSubscriptions]);
 
   // Delete subscription
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta assinatura?")) {
+    if (!confirm("Are you sure you want to delete this subscription?")) {
       return;
     }
 
@@ -60,7 +60,7 @@ export default function SubscriptionsPage() {
       );
     } catch (error) {
       console.error("Error deleting subscription:", error);
-      alert("Não foi possível excluir a assinatura. Tente novamente mais tarde.");
+      alert("Unable to delete the subscription. Please try again later.");
     } finally {
       setIsDeleting(null);
     }
@@ -83,9 +83,9 @@ export default function SubscriptionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-900">Minhas Assinaturas</h1>
+        <h1 className="text-2xl font-bold text-slate-900">My Subscriptions</h1>
         <Button asChild>
-          <Link href="/subscriptions/new">Adicionar Assinatura</Link>
+          <Link href="/subscriptions/new">Add Subscription</Link>
         </Button>
       </div>
 
@@ -98,18 +98,19 @@ export default function SubscriptionsPage() {
                 <div>
                   <h3 className="font-medium text-slate-900">{sub.name}</h3>
                   <p className="text-sm text-slate-500">
-                    Renovação: {new Date(sub.due_date).toLocaleDateString('pt-BR')} • {sub.category || 'Outros'}
+                    Renewal: {new Date(sub.due_date).toLocaleDateString('en-US')} • {sub.category || 'Other'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <p className="font-medium text-slate-900">€ {sub.price.toFixed(2)}/{getFrequency(sub) === 'monthly' ? 'mês' : 'ano'}</p>
+                  <p className="font-medium text-slate-900">€ {sub.price.toFixed(2)}/{getFrequency(sub) === 'monthly' ? 'month' : 'year'}</p>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/subscriptions/${sub.id}`}>Editar</Link>
+                      <Link href={`/subscriptions/${sub.id}`}>Edit</Link>
                     </Button>
                     <Button 
                       variant="destructive" 
                       size="sm" 
+                      className="cursor-pointer"
                       onClick={() => handleDelete(sub.id)}
                       disabled={isDeleting === sub.id}
                     >
@@ -126,7 +127,7 @@ export default function SubscriptionsPage() {
           </div>
         ) : (
           <div className="p-6 text-center text-slate-500">
-            Você não tem assinaturas cadastradas. Adicione sua primeira assinatura!
+            You don&apos;t have any subscriptions yet. Add your first subscription!
           </div>
         )}
       </Card>

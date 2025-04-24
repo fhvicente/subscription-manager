@@ -19,8 +19,7 @@ export function useUserProfile() {
                     setProfile(response.data);
                     setError(null);
                 })
-                .catch(err => {
-                    console.error('Error fetching user profile:', err);
+                .catch(() => {
                     setError('Failed to load user profile');
                 })
                 .finally(() => {
@@ -44,7 +43,7 @@ export function useUserProfile() {
                         setProfile(response.data);
                         setError(null);
                     })
-                    .catch(err => {
+                    .catch(() => {
                         setError('Failed to load user profile');
                     })
                     .finally(() => {

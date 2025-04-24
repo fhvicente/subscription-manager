@@ -69,7 +69,7 @@ export default function SignUpPage() {
             <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg">
                 <div className="mb-6 text-center">
                     <h1 className="text-xl font-bold text-slate-900">Create an Account</h1>
-                    <p className="text-slate-600">Join Subscription Manager to manage your subscriptions</p>
+                    <p className="text-slate-600">Join SubTrack to manage your subscriptions</p>
                 </div>
                 
                 {(error || validationError) && (

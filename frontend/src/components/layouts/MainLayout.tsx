@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
+import Footer from '@/components/Footer';
 
 interface MainLayoutProps {
     children: ReactNode;
@@ -17,6 +18,7 @@ export default function MainLayout({ children, showHero = false }: MainLayoutPro
             <main className="flex-grow">
                 {children}
             </main>
+            <Footer />
         </div>
     );
 } 

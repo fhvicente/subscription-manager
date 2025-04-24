@@ -1,4 +1,4 @@
-# Subscription Manager
+# SubTrack
 
 A simple and effective tool to manage your subscriptions and save money.
 

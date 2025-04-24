@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { usePayment } from "@/hooks/usePayment";
 
-// Interfaces para tipagem
+// Interfaces for typing
 interface NotificationSettings {
   id?: string;
   user_id?: string;
@@ -52,7 +52,7 @@ export default function SettingsPage() {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
   const [error, setError] = useState("");
 
-  // Estados para formulários
+  // Form states
   const [profileForm, setProfileForm] = useState({
     name: ""
   });
@@ -65,8 +65,8 @@ export default function SettingsPage() {
     phoneNumber: ""
   });
 
-  // Buscar status da assinatura
-  const fetchSubscriptionStatus = async () => {
+  // Fetch subscription status
+  const fetchSubscriptionStatus = useCallback(async () => {
     try {
       const status = await getSubscriptionStatus();
       setSubscriptionStatus(status);
@@ -75,66 +75,66 @@ export default function SettingsPage() {
       console.error('Error fetching subscription status:', error);
       return null;
     }
-  };
+  }, [getSubscriptionStatus]);
 
-  // Força uma atualização ao montar o componente e a cada 30 segundos
+  // Force an update when component mounts and every 30 seconds
   useEffect(() => {
     fetchSubscriptionStatus();
     
-    // Verificar as configurações de usuário periodicamente
+    // Check user settings periodically
     const intervalId = setInterval(fetchSubscriptionStatus, 30000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [fetchSubscriptionStatus]);
 
-  // Buscar dados do usuário e configurações de notificação
-  useEffect(() => {
-    const fetchUserData = async () => {
+  // Fetch user data and notification settings
+  const fetchUserData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      // Fetch user profile
+      const userResponse = await api.get('/users/profile');
+      const userData = userResponse.data;
+      setUser(userData);
+      setProfileForm({
+        name: userData.name
+      });
+
+      // Fetch subscription status
+      await fetchSubscriptionStatus();
+      
+      // Fetch notification settings
       try {
-        setIsLoading(true);
-        setError("");
-
-        // Buscar perfil do usuário
-        const userResponse = await api.get('/users/profile');
-        const userData = userResponse.data;
-        setUser(userData);
-        setProfileForm({
-          name: userData.name
-        });
-
-        // Buscar status da assinatura
-        const status = await fetchSubscriptionStatus();
+        const notificationsResponse = await api.get('/notifications/settings');
+        const notificationsData = notificationsResponse.data;
+        setNotificationSettings(notificationsData);
         
-        // Buscar configurações de notificação
-        try {
-          const notificationsResponse = await api.get('/notifications/settings');
-          const notificationsData = notificationsResponse.data;
-          setNotificationSettings(notificationsData);
-          
-          // Configurar o estado do formulário de notificações
-          setNotificationsForm({
-            emailEnabled: notificationsData.email_enabled === 1,
-            smsEnabled: notificationsData.sms_enabled === 1,
-            pushEnabled: notificationsData.push_enabled === 1,
-            daysBeforeRenewal: notificationsData.days_before_renewal,
-            phoneNumber: notificationsData.phone_number || ""
-          });
-        } catch (notifError) {
-          console.error("Error fetching notification settings:", notifError);
-          // Se não conseguir buscar as configurações, mantemos os valores padrão
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        setError("Não foi possível carregar suas configurações. Tente novamente mais tarde.");
-      } finally {
-        setIsLoading(false);
+        // Set up notification form state
+        setNotificationsForm({
+          emailEnabled: notificationsData.email_enabled === 1,
+          smsEnabled: notificationsData.sms_enabled === 1,
+          pushEnabled: notificationsData.push_enabled === 1,
+          daysBeforeRenewal: notificationsData.days_before_renewal,
+          phoneNumber: notificationsData.phone_number || ""
+        });
+      } catch (notifError) {
+        console.error("Error fetching notification settings:", notifError);
+        // If we can't fetch settings, keep the default values
       }
-    };
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setError("Unable to load your settings. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchSubscriptionStatus]);
 
+  useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
-  // Handlers para alterações nos formulários
+  // Handlers for form changes
   const handleProfileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileForm(prev => ({ ...prev, [name]: value }));
@@ -158,7 +158,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Handlers para submissão dos formulários
+  // Handlers for form submissions
   const handleProfileSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -169,11 +169,11 @@ export default function SettingsPage() {
         name: profileForm.name 
       });
       
-      // Mostrar mensagem de sucesso
+      // Show success message
       setShowSuccessProfile(true);
       setTimeout(() => setShowSuccessProfile(false), 3000);
       
-      // Atualizar o estado do usuário
+      // Update user state
       if (user) {
         setUser({
           ...user,
@@ -182,7 +182,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Não foi possível atualizar o perfil. Tente novamente mais tarde.");
+      alert("Unable to update profile. Please try again later.");
     } finally {
       setIsSavingProfile(false);
     }
@@ -206,11 +206,11 @@ export default function SettingsPage() {
       
       await api.put('/notifications/settings', payload);
       
-      // Mostrar mensagem de sucesso
+      // Show success message
       setShowSuccessNotifications(true);
       setTimeout(() => setShowSuccessNotifications(false), 3000);
       
-      // Atualizar o estado das configurações de notificação
+      // Update notification settings state
       if (notificationSettings) {
         setNotificationSettings({
           ...notificationSettings,
@@ -223,7 +223,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Error updating notification settings:", error);
-      alert("Não foi possível atualizar as configurações de notificação. Tente novamente mais tarde.");
+      alert("Unable to update notification settings. Please try again later.");
     } finally {
       setIsSavingNotifications(false);
     }
@@ -242,7 +242,7 @@ export default function SettingsPage() {
       <div className="p-6 text-center">
         <h1 className="text-xl font-semibold text-red-600">{error}</h1>
         <Button className="mt-4" onClick={() => router.refresh()}>
-          Tentar Novamente
+          Try Again
         </Button>
       </div>
     );
@@ -250,21 +250,21 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Configurações</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
 
       {/* Profile Settings */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Perfil</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
         <Card className="bg-white shadow-sm p-6 relative">
           {showSuccessProfile && (
             <div className="absolute top-2 right-2 flex items-center bg-green-100 text-green-600 px-3 py-1 rounded">
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              <span className="text-sm">Salvo</span>
+              <span className="text-sm">Saved</span>
             </div>
           )}
           <form className="space-y-4" onSubmit={handleProfileSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">Name</Label>
               <Input 
                 id="name" 
                 name="name"
@@ -276,16 +276,16 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" value={user?.email || ""} disabled />
-              <p className="text-xs text-slate-500">Email gerenciado pela sua conta de login</p>
+              <p className="text-xs text-slate-500">Email managed by your login account</p>
             </div>
             <div className="pt-2">
-              <Button type="submit" disabled={isSavingProfile}>
+              <Button type="submit" disabled={isSavingProfile} className="cursor-pointer">
                 {isSavingProfile ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
+                    Saving...
                   </>
-                ) : "Salvar Alterações"}
+                ) : "Save Changes"}
               </Button>
             </div>
           </form>
@@ -294,19 +294,19 @@ export default function SettingsPage() {
 
       {/* Notification Settings */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Notificações</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Notifications</h2>
         <Card className="bg-white shadow-sm p-6 relative">
           {showSuccessNotifications && (
             <div className="absolute top-2 right-2 flex items-center bg-green-100 text-green-600 px-3 py-1 rounded">
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              <span className="text-sm">Salvo</span>
+              <span className="text-sm">Saved</span>
             </div>
           )}
           <form className="space-y-4" onSubmit={handleNotificationsSubmit}>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium text-slate-900">Notificações por Email</h3>
-                <p className="text-sm text-slate-500">Receba lembretes por email antes das renovações</p>
+                <h3 className="font-medium text-slate-900">Email Notifications</h3>
+                <p className="text-sm text-slate-500">Receive email reminders before renewals</p>
               </div>
               <div className="flex items-center">
                 <input 
@@ -321,8 +321,8 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium text-slate-900">Notificações por SMS</h3>
-                <p className="text-sm text-slate-500">Receba lembretes por SMS antes das renovações</p>
+                <h3 className="font-medium text-slate-900">SMS Notifications</h3>
+                <p className="text-sm text-slate-500">Receive SMS reminders before renewals</p>
               </div>
               <div className="flex items-center">
                 <input 
@@ -336,39 +336,39 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Número de Telefone (para SMS)</Label>
+              <Label htmlFor="phoneNumber">Phone Number (for SMS)</Label>
               <Input 
                 id="phoneNumber" 
-                placeholder="+55 (11) 98765-4321" 
+                placeholder="+351 123 456 789" 
                 value={notificationsForm.phoneNumber}
                 onChange={handleNotificationChange}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="daysBeforeRenewal">Dias de Antecedência para Notificações</Label>
+              <Label htmlFor="daysBeforeRenewal">Days in Advance for Notifications</Label>
               <select 
                 id="daysBeforeRenewal" 
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={notificationsForm.daysBeforeRenewal}
                 onChange={handleNotificationChange}
               >
-                <option value="1">1 dia antes</option>
-                <option value="2">2 dias antes</option>
-                <option value="3">3 dias antes</option>
-                <option value="5">5 dias antes</option>
-                <option value="7">7 dias antes</option>
+                <option value="1">1 day before</option>
+                <option value="2">2 days before</option>
+                <option value="3">3 days before</option>
+                <option value="5">5 days before</option>
+                <option value="7">7 days before</option>
               </select>
             </div>
 
             <div className="pt-2">
-              <Button type="submit" disabled={isSavingNotifications}>
+              <Button type="submit" disabled={isSavingNotifications} className="cursor-pointer">
                 {isSavingNotifications ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
+                    Saving...
                   </>
-                ) : "Salvar Configurações"}
+                ) : "Save Settings"}
               </Button>
             </div>
           </form>
@@ -377,47 +377,47 @@ export default function SettingsPage() {
 
       {/* Subscription Plan */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Plano de Assinatura</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Subscription Plan</h2>
         <Card className="bg-white shadow-sm p-6">
           <div className="space-y-4">
             <div>
               <h3 className="font-medium text-slate-900">
-                Plano Atual: {subscriptionStatus?.plan === 'premium' ? 'Premium' : 'Gratuito'}
+                Current Plan: {subscriptionStatus?.plan === 'premium' ? 'Premium' : 'Free'}
               </h3>
               {subscriptionStatus?.plan === 'premium' && subscriptionStatus.premiumUntil && (
                 <p className="text-sm text-slate-700 mt-1">
-                  <span className="font-medium">Válido até:</span> {new Date(subscriptionStatus.premiumUntil).toLocaleDateString('pt-BR')}
+                  <span className="font-medium">Valid until:</span> {new Date(subscriptionStatus.premiumUntil).toLocaleDateString()}
                 </p>
               )}
               <p className="text-sm text-slate-500 mt-2">
                 {subscriptionStatus?.plan !== 'premium' 
-                  ? 'Limitado a 3 assinaturas. Atualize para o plano premium para recursos ilimitados.' 
-                  : 'Você tem acesso a todos os recursos premium.'}
+                  ? 'Limited to 3 subscriptions. Upgrade to premium plan for unlimited features.' 
+                  : 'You have access to all premium features.'}
               </p>
             </div>
             
             {subscriptionStatus?.plan !== 'premium' ? (
-              <Button asChild>
-                <a href="/payment">Atualizar para Premium</a>
+              <Button asChild className="cursor-pointer">
+                <a href="/payment">Upgrade to Premium</a>
               </Button>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500">Você pode cancelar seu plano Premium a qualquer momento. Após o cancelamento, você continuará tendo acesso aos recursos premium até o final do período pago.</p>
+                <p className="text-xs text-slate-500">You can cancel your Premium plan at any time. After cancellation, you will continue to have access to premium features until the end of the paid period.</p>
                 <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={async () => {
-                  if (confirm("Tem certeza que deseja cancelar seu plano Premium? Você continuará tendo acesso aos recursos premium até o final do período pago.")) {
+                  if (confirm("Are you sure you want to cancel your Premium plan? You will continue to have access to premium features until the end of the paid period.")) {
                     try {
                       await cancelSubscription();
-                      alert("Seu plano foi cancelado com sucesso!");
-                      // Atualizar o status da assinatura após o cancelamento
+                      alert("Your plan has been successfully canceled!");
+                      // Update subscription status after cancellation
                       await fetchSubscriptionStatus();
                       router.refresh();
                     } catch (error) {
-                      console.error("Erro ao cancelar assinatura:", error);
-                      alert("Não foi possível cancelar sua assinatura. Tente novamente mais tarde.");
+                      console.error("Error canceling subscription:", error);
+                      alert("Unable to cancel your subscription. Please try again later.");
                     }
                   }
                 }}>
-                  Cancelar Assinatura
+                  Cancel Subscription
                 </Button>
               </div>
             )}

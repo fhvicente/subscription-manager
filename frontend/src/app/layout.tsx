@@ -9,7 +9,7 @@ import { AnalyticsProvider } from "@/lib/analytics";
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: "Subscription Manager",
+    title: "SubTrack",
     description: "Manage your subscriptions and save money"
 };
 

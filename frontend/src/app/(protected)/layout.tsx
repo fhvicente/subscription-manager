@@ -1,7 +1,10 @@
+'use client';
+
 import React from 'react';
 // import { Card } from "@/components/ui/card";
 import { UserButton } from "@/components/UserButton";
 import Link from "next/link";
+import Image from 'next/image';
 
 export default function DashboardLayout({
   children,
@@ -13,8 +16,9 @@ export default function DashboardLayout({
       {/* Navigation header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <Link href="/dashboard" className="font-bold text-xl text-slate-900">
-            Subscription Manager
+          <Link href="/dashboard" className="flex items-center justify-center gap-2 text-center text-2xl md:text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity">
+            <Image src="/images/logo.png" alt="logo" width={40} height={40} />
+            {process.env.NEXT_PUBLIC_APP_NAME || 'SubTrack'}
           </Link>
           <nav className="hidden md:flex space-x-6">
             <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">

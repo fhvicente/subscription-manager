@@ -4,13 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePayment } from "@/hooks/usePayment";
-import { SetStateAction, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function PaymentPage() {
   const { createCheckoutSession, loading } = usePayment();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
-  const router = useRouter();
 
   const plans = [
     {

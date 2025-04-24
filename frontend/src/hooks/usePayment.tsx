@@ -25,7 +25,7 @@ export function usePayment() {
   }, []);
 
   // Função para lidar com erros de autenticação
-  const handleAuthError = useCallback((err: any) => {
+  const handleAuthError = useCallback((err: Error & { response?: { status: number } }) => {
     if (err.response && err.response.status === 401) {
       console.warn("Erro de autenticação, token inválido ou expirado");
       setIsTokenValid(false);
@@ -51,8 +51,10 @@ export function usePayment() {
     try {
       const response = await api.post('/payments/session', { plan });
       return response.data;
-    } catch (err: any) {
-      handleAuthError(err);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        handleAuthError(err as Error & { response?: { status: number } });
+      }
       console.error('Error creating checkout session:', err);
       setError('Failed to create checkout session');
       return null;
@@ -74,8 +76,10 @@ export function usePayment() {
     try {
       const response = await api.get('/payments/history');
       return response.data;
-    } catch (err: any) {
-      handleAuthError(err);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        handleAuthError(err as Error & { response?: { status: number } });
+      }
       console.error('Error fetching payment history:', err);
       setError('Failed to fetch payment history');
       return [];
@@ -97,8 +101,10 @@ export function usePayment() {
     try {
       const response = await api.get('/payments/status');
       return response.data;
-    } catch (err: any) {
-      handleAuthError(err);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        handleAuthError(err as Error & { response?: { status: number } });
+      }
       console.error('Error fetching subscription status:', err);
       setError('Failed to fetch subscription status');
       return null;
@@ -120,8 +126,10 @@ export function usePayment() {
     try {
       const response = await api.post('/payments/cancel-subscription');
       return response.data;
-    } catch (err: any) {
-      handleAuthError(err);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        handleAuthError(err as Error & { response?: { status: number } });
+      }
       console.error('Error canceling subscription:', err);
       setError('Failed to cancel subscription');
       throw err;
@@ -143,8 +151,10 @@ export function usePayment() {
     try {
       const response = await api.get(`/payments/status/session?session_id=${sessionId}`);
       return response.data;
-    } catch (err: any) {
-      handleAuthError(err);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        handleAuthError(err as Error & { response?: { status: number } });
+      }
       console.error('Error fetching subscription status by session:', err);
       setError('Failed to fetch subscription status');
       return null;

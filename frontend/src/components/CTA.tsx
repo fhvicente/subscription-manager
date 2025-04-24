@@ -38,7 +38,7 @@ export default function CTA() {
               </h3>
               <blockquote className="mb-6">
                 <p className="text-white/90 italic mb-4">
-                  "This app helped me discover I was paying for three streaming services I never used. I saved over $35 a month just by tracking my subscriptions!"
+                  &ldquo;This app helped me discover I was paying for three streaming services I never used. I saved over $35 a month just by tracking my subscriptions!&rdquo;
                 </p>
                 <footer className="font-medium">
                   — Sarah J., Marketing Director
@@ -47,7 +47,7 @@ export default function CTA() {
               <div className="flex items-center mt-2">
                 <div className="flex -space-x-2">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className={`w-10 h-10 rounded-full border-2 border-white bg-primary-${300 + index * 100} flex items-center justify-center`}>
+                    <div key={index} className={`w-10 h-10 rounded-full border-2 border-white bg-primary flex items-center justify-center`}>
                       <span className="text-xs font-bold">
                         {String.fromCharCode(65 + index)}
                       </span>

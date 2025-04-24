@@ -1,7 +1,6 @@
 'use client';
 
 import { useAnalytics } from '@/lib/analytics';
-import { useEffect } from 'react';
 
 // Define types for subscription
 interface Subscription {

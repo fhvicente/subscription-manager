@@ -7,7 +7,7 @@ export default function Features() {
     <section id="features" className="py-16 bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-          Why Use Our Subscription Manager?
+          Why Use Our SubTrack?
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -27,7 +27,7 @@ export default function Features() {
             </div>
             <h3 className="text-xl font-semibold mb-3">Save Money</h3>
             <p className="text-slate-600">
-              Identify unused subscriptions and unnecessary expenses. Our smart analysis helps you cut costs where you don't need to spend.
+              Identify unused subscriptions and unnecessary expenses. Our smart analysis helps you cut costs where you don&apos;t need to spend.
             </p>
           </div>
           

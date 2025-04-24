@@ -1,5 +1,5 @@
 import { useApi } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Subscription {
     id: string;
@@ -26,7 +26,7 @@ export function useSubscriptions() {
     const [error, setError] = useState<string | null>(null);
 
     // Fetch subscriptions
-    const fetchSubscriptions = async () => {
+    const fetchSubscriptions = useCallback(async () => {
         if (!api) return;
         
         setLoading(true);
@@ -40,10 +40,10 @@ export function useSubscriptions() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [api]);
 
     // Fetch subscription statistics
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         if (!api) return;
         
         try {
@@ -52,7 +52,7 @@ export function useSubscriptions() {
         } catch (err) {
             console.error('Error fetching subscription stats:', err);
         }
-    };
+    }, [api]);
 
     // Create a new subscription
     const createSubscription = async (subscriptionData: SubscriptionInput): Promise<Subscription | null> => {
@@ -104,7 +104,7 @@ export function useSubscriptions() {
         if (!api) return;
         fetchSubscriptions();
         fetchStats();
-    }, [api]);
+    }, [api, fetchSubscriptions, fetchStats]);
 
     return {
         subscriptions,

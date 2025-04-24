@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { usePathname } from "next/navigation";
 
 export default function Header() {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { isAuthenticated, logout } = useAuth();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
     
-    // Detecta o scroll para adicionar sombra na navbar
+    // Detects scroll to add shadow to the navbar
     useEffect(() => {
         const handleScroll = () => {
             if (window.scrollY > 10) {
@@ -26,7 +27,7 @@ export default function Header() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
     
-    // Fecha o menu móvel quando muda de página
+    // Closes the mobile menu when page changes
     useEffect(() => {
         setMobileMenuOpen(false);
     }, [pathname]);
@@ -43,13 +44,14 @@ export default function Header() {
     return (
         <nav className={`fixed top-0 left-0 right-0 w-full bg-white z-50 transition-all duration-300 ${scrolled ? 'shadow-md' : ''}`}>
             <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-                <Link href="/" className="text-2xl md:text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity">
-                    {process.env.NEXT_PUBLIC_APP_NAME || 'Subscription Manager'}
+                <Link href="/" className="flex items-center justify-center gap-2 text-center text-2xl md:text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity">
+                    <Image src="/images/logo.png" alt="logo" width={40} height={40} />
+                    {process.env.NEXT_PUBLIC_APP_NAME || 'SubTrack'}
                 </Link>
                 
-                {/* Menu para desktop */}
+                {/* Desktop menu */}
                 <div className="hidden md:flex items-center space-x-6">
-                    {/* Opções públicas */}
+                    {/* Public options */}
                     <Link 
                         href="/#features" 
                         className="text-gray-700 hover:text-primary transition"
@@ -63,7 +65,7 @@ export default function Header() {
                         How It Works
                     </Link>
                     
-                    {/* Opções para usuários autenticados */}
+                    {/* Options for authenticated users */}
                     {isAuthenticated() ? (
                         <>
                             <Link 
@@ -73,12 +75,12 @@ export default function Header() {
                                 Dashboard
                             </Link>
                             <Link 
-                                href="/profile" 
-                                className={`transition ${isActive('/profile') ? 'text-primary font-medium' : 'text-gray-700 hover:text-primary'}`}
+                                href="/settings" 
+                                className={`transition ${isActive('/settings') ? 'text-primary font-medium' : 'text-gray-700 hover:text-primary'}`}
                             >
                                 Profile
                             </Link>
-                            <Button variant="outline" size="sm" onClick={logout}>
+                            <Button variant="outline" size="sm" onClick={logout} className="cursor-pointer">
                                 Sign Out
                             </Button>
                         </>
@@ -97,7 +99,7 @@ export default function Header() {
                     )}
                 </div>
                 
-                {/* Botão do menu móvel */}
+                {/* Mobile menu button */}
                 <div className="md:hidden">
                     <Button 
                         variant="ghost" 
@@ -134,11 +136,11 @@ export default function Header() {
                 </div>
             </div>
             
-            {/* Menu móvel */}
+            {/* Mobile menu */}
             {mobileMenuOpen && (
                 <div className="md:hidden bg-white shadow-lg border-t">
                     <div className="flex flex-col space-y-3 px-4 py-3">
-                        {/* Opções públicas */}
+                        {/* Public options */}
                         <Link 
                             href="/#features" 
                             className="text-gray-700 hover:text-primary transition py-2 px-3 hover:bg-gray-50 rounded"
@@ -152,7 +154,7 @@ export default function Header() {
                             How It Works
                         </Link>
                         
-                        {/* Opções para usuários autenticados */}
+                        {/* Options for authenticated users */}
                         {isAuthenticated() ? (
                             <>
                                 <Link 
@@ -164,9 +166,9 @@ export default function Header() {
                                     Dashboard
                                 </Link>
                                 <Link 
-                                    href="/profile" 
+                                    href="/settings" 
                                     className={`transition py-2 px-3 hover:bg-gray-50 rounded ${
-                                        isActive('/profile') ? 'text-primary font-medium bg-gray-50' : 'text-gray-700 hover:text-primary'
+                                        isActive('/settings') ? 'text-primary font-medium bg-gray-50' : 'text-gray-700 hover:text-primary'
                                     }`}
                                 >
                                     Profile

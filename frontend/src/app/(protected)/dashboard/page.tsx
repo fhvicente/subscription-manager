@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 
-// Tipos
+// Types
 interface Subscription {
   id: string;
   name: string;
@@ -36,7 +36,6 @@ interface DashboardData {
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalSubscriptions: 0,
     monthlyTotal: 0,
@@ -44,31 +43,8 @@ export default function Dashboard() {
     categories: {}
   });
 
-  // Fetch subscriptions on component mount
-  useEffect(() => {
-    const fetchSubscriptions = async () => {
-      try {
-        setIsLoading(true);
-        const response = await api.get('/subscriptions');
-        const subs: Subscription[] = response.data;
-        setSubscriptions(subs);
-        
-        // Calculate dashboard metrics
-        calculateDashboardMetrics(subs);
-      } catch (error) {
-        console.error("Error fetching subscriptions:", error);
-        // Use alert instead of toast since toast component might not be available
-        alert("Não foi possível carregar suas assinaturas. Tente novamente mais tarde.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSubscriptions();
-  }, []);
-
   // Calculate dashboard metrics from subscriptions
-  const calculateDashboardMetrics = (subs: Subscription[]) => {
+  const calculateDashboardMetrics = useCallback((subs: Subscription[]) => {
     if (!subs || subs.length === 0) {
       setDashboardData({
         totalSubscriptions: 0,
@@ -103,13 +79,13 @@ export default function Dashboard() {
         name: sub.name,
         amount: sub.price,
         renewalDate: sub.due_date,
-        category: sub.category || 'Outros'
+        category: sub.category || 'Other'
       }));
 
     // Group by categories (using description field as placeholder for category)
     const categories: Record<string, number> = {};
     subs.forEach(sub => {
-      const category = sub.category || sub.description || 'Outros';
+      const category = sub.category || sub.description || 'Other';
       if (!categories[category]) {
         categories[category] = 0;
       }
@@ -122,7 +98,29 @@ export default function Dashboard() {
       upcomingRenewals,
       categories
     });
-  };
+  }, []);
+
+  // Fetch subscriptions on component mount
+  useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get('/subscriptions');
+        const subs: Subscription[] = response.data;
+        
+        // Calculate dashboard metrics
+        calculateDashboardMetrics(subs);
+      } catch (error) {
+        console.error("Error fetching subscriptions:", error);
+        // Use alert instead of toast since toast component might not be available
+        alert("Unable to load your subscriptions. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSubscriptions();
+  }, [calculateDashboardMetrics]);
 
   if (isLoading) {
     return (
@@ -137,33 +135,33 @@ export default function Dashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <Button asChild>
-          <Link href="/subscriptions/new">Adicionar Assinatura</Link>
+          <Link href="/subscriptions/new">Add Subscription</Link>
         </Button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6 bg-white shadow-sm">
-          <h2 className="text-sm font-medium text-slate-500">Total Mensal</h2>
+          <h2 className="text-sm font-medium text-slate-500">Monthly Total</h2>
           <p className="text-3xl font-bold text-slate-900">€ {dashboardData.monthlyTotal.toFixed(2)}</p>
         </Card>
         <Card className="p-6 bg-white shadow-sm">
-          <h2 className="text-sm font-medium text-slate-500">Assinaturas Ativas</h2>
+          <h2 className="text-sm font-medium text-slate-500">Active Subscriptions</h2>
           <p className="text-3xl font-bold text-slate-900">{dashboardData.totalSubscriptions}</p>
         </Card>
         <Card className="p-6 bg-white shadow-sm">
-          <h2 className="text-sm font-medium text-slate-500">Próxima Renovação</h2>
+          <h2 className="text-sm font-medium text-slate-500">Next Renewal</h2>
           <p className="text-3xl font-bold text-slate-900">
             {dashboardData.upcomingRenewals.length > 0 
-              ? new Date(dashboardData.upcomingRenewals[0].renewalDate).toLocaleDateString('pt-BR') 
-              : 'Nenhuma'}
+              ? new Date(dashboardData.upcomingRenewals[0].renewalDate).toLocaleDateString('en-US') 
+              : 'None'}
           </p>
         </Card>
       </div>
 
       {/* Upcoming Renewals */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Próximas Renovações</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Upcoming Renewals</h2>
         <Card className="bg-white shadow-sm overflow-hidden">
           {dashboardData.upcomingRenewals.length > 0 ? (
             <div className="divide-y divide-slate-200">
@@ -172,7 +170,7 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-medium text-slate-900">{sub.name}</h3>
                     <p className="text-sm text-slate-500">
-                      {new Date(sub.renewalDate).toLocaleDateString('pt-BR')} • {sub.category}
+                      {new Date(sub.renewalDate).toLocaleDateString('en-US')} • {sub.category}
                     </p>
                   </div>
                   <p className="font-medium text-slate-900">€ {sub.amount.toFixed(2)}</p>
@@ -181,7 +179,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="p-6 text-center text-slate-500">
-              Nenhuma renovação nos próximos 30 dias
+              No renewals in the next 30 days
             </div>
           )}
         </Card>
@@ -189,7 +187,7 @@ export default function Dashboard() {
 
       {/* Categories */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-900">Gastos por Categoria</h2>
+        <h2 className="text-xl font-semibold text-slate-900">Spending by Category</h2>
         <Card className="bg-white shadow-sm p-6">
           {Object.keys(dashboardData.categories).length > 0 ? (
             <div className="space-y-4">
@@ -205,7 +203,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-center text-slate-500">
-              Sem dados de categorias disponíveis
+              No category data available
             </div>
           )}
         </Card>

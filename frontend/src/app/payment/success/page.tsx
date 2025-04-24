@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePayment } from "@/hooks/usePayment";
 import Cookies from 'js-cookie';
@@ -16,7 +16,7 @@ interface Subscription {
   isActive?: boolean;
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get('session_id');
@@ -24,7 +24,7 @@ export default function PaymentSuccessPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10);
-  const { getSubscriptionStatus, isTokenValid, getSubscriptionStatusBySession } = usePayment();
+  const { isTokenValid, getSubscriptionStatusBySession } = usePayment();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const { isAuthenticated } = useAuth();
 
@@ -60,7 +60,7 @@ export default function PaymentSuccessPage() {
   }, [subscription, router]);
 
   // Função para buscar status da assinatura
-  const fetchSubscriptionStatus = async () => {
+  const fetchSubscriptionStatus = useCallback(async () => {
     if (!sessionId || authError || !isTokenValid) return;
     
     try {
@@ -74,7 +74,7 @@ export default function PaymentSuccessPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [sessionId, authError, isTokenValid, getSubscriptionStatusBySession]);
 
   useEffect(() => {
     if (isAuthenticated() && isTokenValid) {
@@ -89,7 +89,7 @@ export default function PaymentSuccessPage() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [sessionId, getSubscriptionStatusBySession, isAuthenticated, isTokenValid]);
+  }, [sessionId, getSubscriptionStatusBySession, isAuthenticated, isTokenValid, fetchSubscriptionStatus, subscription]);
 
   if (authError) {
     return (
@@ -190,5 +190,35 @@ export default function PaymentSuccessPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+// Loading fallback component
+function PaymentLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <Card className="max-w-md w-full bg-white shadow-sm p-8 text-center">
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="animate-spin h-8 w-8 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Carregando...</h1>
+          <p className="text-slate-600">
+            Estamos verificando seu pagamento.
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<PaymentLoadingFallback />}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

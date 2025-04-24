@@ -10,6 +10,12 @@ function generateUUID() {
   });
 }
 
+// Configurar JWT Secret com fallback
+const JWT_SECRET = process.env.JWT_SECRET || '8c534066dc27202464aa9b1798e8548a3dce9f8375ef48cb507af64519ea9272';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+console.log('JWT_SECRET status:', JWT_SECRET ? 'Defined' : 'Undefined');
+
 // Register a new user
 export const register = async (req, res) => {
   try {
@@ -46,8 +52,8 @@ export const register = async (req, res) => {
     // Create token
     const token = jwt.sign(
       { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     res.status(201).json({
@@ -87,8 +93,8 @@ export const login = async (req, res) => {
     // Create token
     const token = jwt.sign(
       { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     // Return user without password

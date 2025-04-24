@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { get } from './db/database.js';
 
+// JWT Secret configuration with fallback
+const JWT_SECRET = process.env.JWT_SECRET || '8c534066dc27202464aa9b1798e8548a3dce9f8375ef48cb507af64519ea9272';
+
 // This example protects all routes except a few specific public ones
 // See comments for more details
 
@@ -29,7 +32,7 @@ export const authMiddleware = async (req, res, next) => {
     }
     
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     if (!decoded || !decoded.id) {
       console.log(`Auth error: Token payload invalid for route ${req.path}`);

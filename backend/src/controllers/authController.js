@@ -2,19 +2,19 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { get, run } from '../db/database.js';
 
-// Função para gerar um UUID simples
-function generateUUID() {
+// Simple UUID generator function
+export function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
 
-// Configurar JWT Secret com fallback
+// Configure JWT Secret with fallback
 const JWT_SECRET = process.env.JWT_SECRET || '8c534066dc27202464aa9b1798e8548a3dce9f8375ef48cb507af64519ea9272';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-console.log('JWT_SECRET status:', JWT_SECRET ? 'Defined' : 'Undefined');
+// console.log('JWT_SECRET status:', JWT_SECRET ? 'Defined' : 'Undefined');
 
 // Register a new user
 export const register = async (req, res) => {

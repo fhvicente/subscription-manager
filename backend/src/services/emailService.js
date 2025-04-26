@@ -6,7 +6,7 @@ const apiKey = process.env.SENDGRID_API_KEY;
 try {
   if (apiKey && apiKey.startsWith('SG.')) {
     sgMail.setApiKey(apiKey);
-    console.log('SendGrid API initialized successfully');
+    // console.log('SendGrid API initialized successfully');
   } else {
     console.warn('SendGrid API key not properly configured. Email notifications will be simulated.');
   }

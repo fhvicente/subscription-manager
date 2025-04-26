@@ -1,74 +1,74 @@
-# Backend do Gestor de Subscrições
+# Subscription Manager Backend
 
-Este é o backend simplificado do Gestor de Subscrições, agora utilizando SQLite diretamente como banco de dados em vez do Prisma ORM.
+This is the simplified backend for the Subscription Manager, now using SQLite directly as a database instead of the Prisma ORM.
 
-## Tecnologias Utilizadas
+## Technologies Used
 
-- **Node.js** com Express
-- **SQLite** para armazenamento de dados
-- **JWT** para autenticação
-- **bcrypt** para criptografia de senhas
+- **Node.js** with Express
+- **SQLite** for data storage
+- **JWT** for authentication
+- **bcrypt** for password encryption
 
-## Estrutura do Projeto
+## Project Structure
 
-- `/src` - Código fonte principal
-  - `/db` - Módulo de banco de dados SQLite e scripts de inicialização
-  - `/controllers` - Controladores da API
-  - `/routes` - Rotas da API
-  - `middleware.js` - Middleware de autenticação
-  - `index.js` - Ponto de entrada da aplicação
+- `/src` - Main source code
+  - `/db` - SQLite database module and initialization scripts
+  - `/controllers` - API controllers
+  - `/routes` - API routes
+  - `middleware.js` - Authentication middleware
+  - `index.js` - Application entry point
 
-## Como Usar
+## How to Use
 
-1. Instale as dependências:
+1. Install dependencies:
    ```
    npm install
    ```
 
-2. Crie o arquivo `.env` a partir do exemplo:
+2. Create the `.env` file from the example:
    ```
    cp .env.example .env
    ```
 
-3. Inicialize o banco de dados:
+3. Initialize the database:
    ```
    npm run init-db
    ```
 
-4. Execute o servidor em modo de desenvolvimento:
+4. Run the server in development mode:
    ```
    npm run dev
    ```
 
-## Usuários de Teste
+## Test Users
 
 - Admin: admin@example.com / admin123
 - User: user@example.com / test123
 
-## Rotas da API
+## API Routes
 
-### Autenticação
-- `POST /api/auth/register` - Registrar um novo usuário
-- `POST /api/auth/login` - Fazer login
-- `GET /api/auth/me` - Obter informações do usuário atual (autenticado)
+### Authentication
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login
+- `GET /api/auth/me` - Get current user information (authenticated)
 
-### Usuários
-- `GET /api/users/profile` - Obter perfil do usuário (autenticado)
-- `PUT /api/users/profile` - Atualizar perfil do usuário (autenticado)
+### Users
+- `GET /api/users/profile` - Get user profile (authenticated)
+- `PUT /api/users/profile` - Update user profile (authenticated)
 
-### Subscrições
-- `GET /api/subscriptions` - Listar todas as subscrições
-- `GET /api/subscriptions/:id` - Obter uma subscrição específica
-- `POST /api/subscriptions` - Criar uma nova subscrição
-- `PUT /api/subscriptions/:id` - Atualizar uma subscrição
-- `DELETE /api/subscriptions/:id` - Excluir uma subscrição
+### Subscriptions
+- `GET /api/subscriptions` - List all subscriptions
+- `GET /api/subscriptions/:id` - Get a specific subscription
+- `POST /api/subscriptions` - Create a new subscription
+- `PUT /api/subscriptions/:id` - Update a subscription
+- `DELETE /api/subscriptions/:id` - Delete a subscription
 
-## Banco de Dados
+## Database
 
-O banco de dados SQLite é armazenado em `/data/database.sqlite`. As tabelas incluem:
+The SQLite database is stored in `/data/database.sqlite`. Tables include:
 
-- `users` - Usuários do sistema
-- `subscriptions` - Subscrições
-- `notification_settings` - Configurações de notificação
-- `payment_logs` - Logs de pagamento
-- `todos` - Lista de tarefas 
+- `users` - System users
+- `subscriptions` - Subscriptions
+- `notification_settings` - Notification settings
+- `payment_logs` - Payment logs
+- `todos` - To-do list 

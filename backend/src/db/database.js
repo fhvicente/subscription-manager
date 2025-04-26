@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 
 // Ensure the directory exists
 const dbDir = join(__dirname, '../../data');
-console.log(`Database directory path: ${dbDir}`);
+// console.log(`Database directory path: ${dbDir}`);
 
 if (!fs.existsSync(dbDir)) {
   console.log(`Creating database directory: ${dbDir}`);
@@ -18,12 +18,12 @@ if (!fs.existsSync(dbDir)) {
 
 // Database file path
 const dbPath = join(dbDir, 'database.sqlite');
-console.log(`Database file path: ${dbPath}`);
+// console.log(`Database file path: ${dbPath}`);
 
 // Output directory permissions
 try {
   const dirStats = fs.statSync(dbDir);
-  console.log(`Directory permissions: ${dirStats.mode.toString(8)}`);
+  // console.log(`Directory permissions: ${dirStats.mode.toString(8)}`);
 } catch (err) {
   console.error(`Error checking directory stats: ${err.message}`);
 }
@@ -33,7 +33,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error connecting to database:', err.message);
   } else {
-    console.log(`Connected to SQLite database at ${dbPath}`);
+    // console.log(`Connected to SQLite database at ${dbPath}`);
     
     // Enable foreign keys
     db.run('PRAGMA foreign_keys = ON');

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { get } from './db/database.js';
+import { get } from '../db/database.js';
 
 // JWT Secret configuration with fallback
 const JWT_SECRET = process.env.JWT_SECRET || '8c534066dc27202464aa9b1798e8548a3dce9f8375ef48cb507af64519ea9272';
@@ -10,7 +10,12 @@ const JWT_SECRET = process.env.JWT_SECRET || '8c534066dc27202464aa9b1798e8548a3d
 export const authMiddleware = async (req, res, next) => {
   try {
     // Check for public routes that don't need authentication
-    const publicRoutes = ['/api/auth/login', '/api/auth/register', '/api/webhook'];
+    const publicRoutes = [
+      '/api/auth/login', 
+      '/api/auth/register', 
+      '/api/payments/webhook',
+      '/api/payments/status/session'
+    ];
     const isPublicRoute = publicRoutes.some(route => req.path.startsWith(route));
     
     if (isPublicRoute) {
@@ -70,4 +75,4 @@ export default authMiddleware;
 
 export const config = {
     matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
-};
+}; 

@@ -1,5 +1,6 @@
 import { get, run, query } from '../db/database.js';
 import * as emailService from '../services/emailService.js';
+import { generateUUID } from './authController.js';
 
 // Get notification settings for a user
 const getNotificationSettings = async (req, res) => {
@@ -38,14 +39,6 @@ const getNotificationSettings = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch notification settings' });
     }
 };
-
-// Function to generate a simple UUID
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
 
 // Update notification settings
 const updateNotificationSettings = async (req, res) => {

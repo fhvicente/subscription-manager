@@ -1,6 +1,6 @@
-# API Documentation - Gestor Simples de Assinaturas
+# API Documentation - Simple Subscription Manager
 
-Este documento detalha todos os endpoints da API do Gestor Simples de Assinaturas, incluindo parâmetros, respostas e exemplos.
+This document details all the endpoints of the Simple Subscription Manager API, including parameters, responses, and examples.
 
 ## Base URL
 
@@ -8,34 +8,34 @@ Este documento detalha todos os endpoints da API do Gestor Simples de Assinatura
 https://api.gestor-assinaturas.com
 ```
 
-Para desenvolvimento local:
+For local development:
 ```
 http://localhost:3001
 ```
 
-## Autenticação
+## Authentication
 
-Todos os endpoints (exceto webhooks) requerem autenticação via token JWT no cabeçalho Authorization:
+All endpoints (except webhooks) require authentication via JWT token in the Authorization header:
 
 ```
-Authorization: Bearer {seu_token_jwt}
+Authorization: Bearer {your_jwt_token}
 ```
 
-O token JWT é obtido automaticamente pelo frontend através da integração com Clerk.
+The JWT token is automatically obtained by the frontend through Clerk integration.
 
 ---
 
 ## Endpoints
 
-### Assinaturas
+### Subscriptions
 
-#### Listar todas as assinaturas
+#### List all subscriptions
 
 ```
 GET /api/subscriptions
 ```
 
-**Resposta**
+**Response**
 ```json
 [
   {
@@ -65,13 +65,13 @@ GET /api/subscriptions
 ]
 ```
 
-#### Criar nova assinatura
+#### Create new subscription
 
 ```
 POST /api/subscriptions
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
   "name": "Disney+",
@@ -83,7 +83,7 @@ POST /api/subscriptions
 }
 ```
 
-**Resposta (201 Created)**
+**Response (201 Created)**
 ```json
 {
   "id": "3",
@@ -99,13 +99,13 @@ POST /api/subscriptions
 }
 ```
 
-#### Obter detalhes de uma assinatura
+#### Get subscription details
 
 ```
 GET /api/subscriptions/:id
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "id": "1",
@@ -121,13 +121,13 @@ GET /api/subscriptions/:id
 }
 ```
 
-#### Atualizar uma assinatura
+#### Update a subscription
 
 ```
 PUT /api/subscriptions/:id
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
   "name": "Netflix Premium",
@@ -135,7 +135,7 @@ PUT /api/subscriptions/:id
 }
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "id": "1",
@@ -151,26 +151,26 @@ PUT /api/subscriptions/:id
 }
 ```
 
-#### Excluir uma assinatura
+#### Delete a subscription
 
 ```
 DELETE /api/subscriptions/:id
 ```
 
-**Resposta (200 OK)**
+**Response (200 OK)**
 ```json
 {
   "message": "Subscription deleted successfully"
 }
 ```
 
-#### Obter estatísticas de assinaturas
+#### Get subscription statistics
 
 ```
 GET /api/subscriptions/stats
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "totalMonthly": 46.97,
@@ -199,15 +199,15 @@ GET /api/subscriptions/stats
 }
 ```
 
-### Notificações
+### Notifications
 
-#### Obter configurações de notificação
+#### Get notification settings
 
 ```
 GET /api/notifications
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "userId": "user_123",
@@ -221,13 +221,13 @@ GET /api/notifications
 }
 ```
 
-#### Atualizar configurações de notificação
+#### Update notification settings
 
 ```
 PUT /api/notifications
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
   "emailEnabled": true,
@@ -238,7 +238,7 @@ PUT /api/notifications
 }
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "userId": "user_123",
@@ -252,20 +252,20 @@ PUT /api/notifications
 }
 ```
 
-#### Enviar notificação de teste
+#### Send test notification
 
 ```
 POST /api/notifications/test
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
   "type": "email"
 }
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "success": true,
@@ -273,18 +273,18 @@ POST /api/notifications/test
 }
 ```
 
-#### Verificar renovações próximas (para cron)
+#### Check upcoming renewals (for cron)
 
 ```
 POST /api/notifications/check-renewals
 ```
 
-**Cabeçalhos**
+**Headers**
 ```
 x-api-key: your_secure_cron_api_key
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "success": true,
@@ -300,22 +300,22 @@ x-api-key: your_secure_cron_api_key
 }
 ```
 
-### Pagamentos
+### Payments
 
-#### Criar sessão de checkout do Stripe
+#### Create Stripe checkout session
 
 ```
 POST /api/payments/create-checkout-session
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
   "plan": "monthly"
 }
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "sessionId": "cs_test_a1b2c3d4e5f6g7h8i9j0",
@@ -323,21 +323,21 @@ POST /api/payments/create-checkout-session
 }
 ```
 
-#### Webhook do Stripe para eventos de pagamento
+#### Stripe webhook for payment events
 
 ```
 POST /api/payments/webhook
 ```
 
-Este endpoint é chamado pelo Stripe e não deve ser chamado diretamente.
+This endpoint is called by Stripe and should not be called directly.
 
-#### Obter histórico de pagamentos
+#### Get payment history
 
 ```
 GET /api/payments/history
 ```
 
-**Resposta**
+**Response**
 ```json
 [
   {
@@ -352,13 +352,13 @@ GET /api/payments/history
 ]
 ```
 
-#### Obter status da assinatura premium
+#### Get premium subscription status
 
 ```
 GET /api/payments/subscription-status
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "plan": "premium",
@@ -367,20 +367,20 @@ GET /api/payments/subscription-status
 }
 ```
 
-### Usuários
+### Users
 
-#### Obter perfil do usuário
+#### Get user profile
 
 ```
 GET /api/users/profile
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "id": "user_123",
-  "email": "usuario@exemplo.com",
-  "name": "Usuário Exemplo",
+  "email": "user@example.com",
+  "name": "Example User",
   "plan": "premium",
   "premiumUntil": "2025-05-15T16:00:00.000Z",
   "createdAt": "2025-04-01T12:00:00.000Z",
@@ -388,25 +388,25 @@ GET /api/users/profile
 }
 ```
 
-#### Atualizar perfil do usuário
+#### Update user profile
 
 ```
 PUT /api/users/profile
 ```
 
-**Corpo da requisição**
+**Request body**
 ```json
 {
-  "name": "Novo Nome do Usuário"
+  "name": "New User Name"
 }
 ```
 
-**Resposta**
+**Response**
 ```json
 {
   "id": "user_123",
-  "email": "usuario@exemplo.com",
-  "name": "Novo Nome do Usuário",
+  "email": "user@example.com",
+  "name": "New User Name",
   "plan": "premium",
   "premiumUntil": "2025-05-15T16:00:00.000Z",
   "createdAt": "2025-04-01T12:00:00.000Z",
@@ -414,15 +414,15 @@ PUT /api/users/profile
 }
 ```
 
-## Códigos de Erro
+## Error Codes
 
-- `400 Bad Request` - Requisição inválida ou parâmetros faltando
-- `401 Unauthorized` - Autenticação necessária ou token inválido
-- `403 Forbidden` - Permissão negada para o recurso
-- `404 Not Found` - Recurso não encontrado
-- `500 Internal Server Error` - Erro interno do servidor
+- `400 Bad Request` - Invalid request or missing parameters
+- `401 Unauthorized` - Authentication required or invalid token
+- `403 Forbidden` - Permission denied for the resource
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Internal server error
 
-## Limites de Taxa
+## Rate Limits
 
-- Plano gratuito: 100 requisições por minuto
-- Plano premium: 500 requisições por minuto
+- Free plan: 100 requests per minute
+- Premium plan: 500 requests per minute

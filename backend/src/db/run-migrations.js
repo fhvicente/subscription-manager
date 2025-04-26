@@ -1,8 +1,8 @@
 /**
  * Run all migrations in sequence
  * 
- * Este arquivo mantém o histórico de migrações e pode ser usado
- * para adicionar futuras migrações conforme necessário.
+ * This file maintains the migration history and can be used
+ * to add future migrations as needed.
  */
 async function runAllMigrations() {
   try {

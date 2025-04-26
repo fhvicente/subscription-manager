@@ -403,7 +403,7 @@ export default function SettingsPage() {
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">You can cancel your Premium plan at any time. After cancellation, you will continue to have access to premium features until the end of the paid period.</p>
-                <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={async () => {
+                <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer" onClick={async () => {
                   if (confirm("Are you sure you want to cancel your Premium plan? You will continue to have access to premium features until the end of the paid period.")) {
                     try {
                       await cancelSubscription();

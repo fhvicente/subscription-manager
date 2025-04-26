@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { get, run, query } from '../db/database.js';
+import { generateUUID } from '../controllers/authController.js';
 
 // Safely initialize Stripe if API key is available
 let stripe;
@@ -161,7 +162,7 @@ const handleWebhook = async (req, res) => {
         
         // Create payment log
         await run(
-          `INSERT INTO payment_logs (userId, amount, status, stripeSessionId, plan) 
+          `INSERT INTO payment_logs (user_id, amount, status, stripeSessionId, plan) 
            VALUES (?, ?, ?, ?, ?)`,
           [
             userId,
@@ -188,7 +189,7 @@ const handleWebhook = async (req, res) => {
         if (user) {
           // Create payment log
           await run(
-            `INSERT INTO payment_logs (userId, amount, status, stripeSessionId) 
+            `INSERT INTO payment_logs (user_id, amount, status, stripeSessionId) 
              VALUES (?, ?, ?, ?)`,
             [
               user.id,
@@ -237,7 +238,7 @@ const getPaymentHistory = async (req, res) => {
     const userId = req.user.id;
     
     const payments = await query(
-      'SELECT * FROM payment_logs WHERE userId = ? ORDER BY createdAt DESC',
+      'SELECT * FROM payment_logs WHERE user_id = ? ORDER BY created_at DESC',
       [userId]
     );
     
@@ -281,68 +282,109 @@ const getSubscriptionStatus = async (req, res) => {
 // Get subscription status for a specific payment session
 // This is useful for the payment success page
 const getSubscriptionStatusBySession = async (req, res) => {
+  const { session_id } = req.query;
+
+  // Log entry point for debugging
+  console.log(`[getSubscriptionStatusBySession] Session ID: ${session_id}`);
+
+  if (!session_id) {
+    console.warn('[getSubscriptionStatusBySession] Warning: Session ID is required.');
+    return res.status(400).json({ message: 'Session ID is required' });
+  }
+
   try {
-    const userId = req.user.id;
-    const { session_id } = req.query;
-    
-    if (!session_id) {
-      return res.status(400).json({ message: 'Session ID is required' });
+    // --- Fetch Payment Log to identify the user ---
+    let paymentLog;
+    try {
+      paymentLog = await get(
+        'SELECT * FROM payment_logs WHERE stripeSessionId = ?',
+        [session_id]
+      );
+      
+      if (!paymentLog) {
+        console.warn(`[getSubscriptionStatusBySession] No payment log found for session ${session_id}`);
+        return res.status(404).json({ message: 'Payment session not found' });
+      }
+      
+      console.log(`[getSubscriptionStatusBySession] Payment log found for session ${session_id}: ${JSON.stringify(paymentLog)}`);
+    } catch (dbError) {
+      console.error(`[getSubscriptionStatusBySession] Database error fetching payment log for session ${session_id}:`, dbError);
+      throw new Error('Database error fetching payment log.');
     }
+
+    const userId = paymentLog.user_id;
     
-    // First check if this payment is related to the user
-    const paymentLog = await get(
-      'SELECT * FROM payment_logs WHERE stripeSessionId = ? AND userId = ?',
-      [session_id, userId]
-    );
-    
-    // Get user subscription details
-    const user = await get(
-      'SELECT id, email, name, plan, premiumUntil FROM users WHERE id = ?',
-      [userId]
-    );
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (!userId) {
+      console.error(`[getSubscriptionStatusBySession] No user ID associated with session ${session_id}`);
+      return res.status(400).json({ message: 'No user associated with this payment session' });
     }
-    
-    // Check if the user has a premium subscription
-    const isPremiumActive = user.plan === 'premium' && 
-                          user.premiumUntil && 
+
+    // --- Fetch User Details ---
+    let user;
+    try {
+      user = await get(
+        'SELECT id, email, name, plan, premiumUntil FROM users WHERE id = ?',
+        [userId]
+      );
+      if (!user) {
+        // Log this specific case
+        console.warn(`[getSubscriptionStatusBySession] User not found in DB for ID: ${userId}`);
+        return res.status(404).json({ message: 'User not found' });
+      }
+      console.log(`[getSubscriptionStatusBySession] User found: ${JSON.stringify(user)}`);
+    } catch (dbError) {
+      console.error(`[getSubscriptionStatusBySession] Database error fetching user ID ${userId}:`, dbError);
+      // Re-throw to be caught by the main catch block, or handle specifically
+      throw new Error('Database error fetching user details.');
+    }
+
+    // --- Determine Subscription Status ---
+    const isPremiumActive = user.plan === 'premium' &&
+                          user.premiumUntil &&
                           new Date(user.premiumUntil) > new Date();
-    
-    // If no payment log is found, or it's not successful, but the user has premium
-    // We'll still show the premium status
-    if ((!paymentLog || paymentLog.status !== 'success') && isPremiumActive) {
+
+    console.log(`[getSubscriptionStatusBySession] User plan: ${user.plan}, PremiumUntil: ${user.premiumUntil}, isPremiumActive: ${isPremiumActive}`);
+
+    // --- Return Response based on checks ---
+    if (paymentLog.status === 'success') {
+      console.log('[getSubscriptionStatusBySession] Returning status based on successful payment log.');
       return res.json({
-        plan: user.plan,
-        premiumUntil: user.premiumUntil,
-        isActive: true,
-        verifiedSession: false
-      });
-    }
-    
-    // If the payment log exists and is successful
-    if (paymentLog && paymentLog.status === 'success') {
-      return res.json({
+        userId: user.id,
+        email: user.email,
         plan: user.plan,
         premiumUntil: user.premiumUntil,
         isActive: isPremiumActive,
         verifiedSession: true,
         sessionId: session_id
       });
+    } else if (isPremiumActive) {
+       // Allow showing premium status even if specific session check fails, but indicate verification failure
+      console.log('[getSubscriptionStatusBySession] Returning status based on active user premium (session not verified or log not found/success).');
+      return res.json({
+        userId: user.id,
+        email: user.email,
+        plan: user.plan,
+        premiumUntil: user.premiumUntil,
+        isActive: true,
+        verifiedSession: false // Indicate the session itself wasn't the source of truth here
+      });
+    } else {
+      // User is not premium and payment log is not successful
+      console.log('[getSubscriptionStatusBySession] Returning status: User not premium, payment log not successful.');
+      return res.json({
+        userId: user.id,
+        email: user.email,
+        plan: user.plan,
+        premiumUntil: user.premiumUntil,
+        isActive: false,
+        verifiedSession: false
+      });
     }
-    
-    // If we get to this point, the user doesn't have premium status and the payment wasn't successful
-    return res.json({
-      plan: user.plan,
-      premiumUntil: user.premiumUntil,
-      isActive: false,
-      verifiedSession: false
-    });
-    
+
   } catch (error) {
-    console.error('Error fetching subscription status by session:', error);
-    res.status(500).json({ message: 'Failed to fetch subscription status' });
+    // Log the specific error and context before sending 500
+    console.error(`[getSubscriptionStatusBySession] Error for Session ID: ${session_id}:`, error);
+    res.status(500).json({ message: 'Failed to fetch subscription status due to an internal error.' });
   }
 };
 
@@ -387,11 +429,14 @@ const cancelSubscription = async (req, res) => {
       ['free', userId]
     );
     
+    // Generate a UUID for the payment log
+    const paymentLogId = generateUUID();
+    
     // Log the cancellation
     await run(
-      `INSERT INTO payment_logs (userId, status, notes) 
-       VALUES (?, ?, ?)`,
-      [userId, 'canceled', 'Subscription canceled by user']
+      `INSERT INTO payment_logs (id, user_id, amount, status, notes) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [paymentLogId, userId, 0.00, 'canceled', 'Subscription canceled by user']
     );
     
     res.json({ 

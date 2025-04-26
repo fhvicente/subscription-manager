@@ -10,21 +10,26 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import webhookRoutes from './routes/webhookRoutes.js';
+import { handleWebhook } from './controllers/paymentController.js';
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(express.json());
+// Basic configuration
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
+// Special route for webhooks with raw body parser (must come before express.json())
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
+// JSON parsing middleware (after webhooks)
+app.use(express.json());
+
 // Routes
 app.get('/', (req, res) => {
-    res.json({ message: 'Gestor Simples de Assinaturas API' });
+    res.json({ message: 'Subscription Manager API' });
 });
 
 // API routes
@@ -33,7 +38,6 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/webhook', webhookRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

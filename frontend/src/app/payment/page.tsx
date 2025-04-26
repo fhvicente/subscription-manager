@@ -13,27 +13,27 @@ export default function PaymentPage() {
   const plans = [
     {
       id: 'monthly',
-      name: 'Plano Mensal',
-      price: 'R$ 9,90',
-      period: 'por mês',
+      name: 'Monthly Plan',
+      price: '€3,99',
+      period: 'per month',
       features: [
-        'Assinaturas ilimitadas',
-        'Notificações por email e SMS',
-        'Relatórios detalhados',
-        'Suporte prioritário'
+        'Unlimited subscriptions',
+        'Email and SMS notifications',
+        'Detailed reports',
+        'Priority support'
       ]
     },
     {
       id: 'yearly',
-      name: 'Plano Anual',
-      price: 'R$ 99,90',
-      period: 'por ano',
+      name: 'Annual Plan',
+      price: '€39,99',
+      period: 'per year',
       features: [
-        'Assinaturas ilimitadas',
-        'Notificações por email e SMS',
-        'Relatórios detalhados',
-        'Suporte prioritário',
-        'Economia de 16%'
+        'Unlimited subscriptions',
+        'Email and SMS notifications',
+        'Detailed reports',
+        'Priority support',
+        'Save 20%'
       ],
       recommended: true
     }
@@ -48,11 +48,11 @@ export default function PaymentPage() {
         // Redirect to Stripe Checkout
         window.location.href = session.url;
       } else {
-        alert('Não foi possível iniciar o processo de pagamento. Por favor, tente novamente.');
+        alert('Unable to start payment process. Please try again.');
       }
     } catch (error) {
-      console.error('Erro ao criar sessão de checkout:', error);
-      alert('Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.');
+      console.error('Error creating checkout session:', error);
+      alert('An error occurred while processing your request. Please try again.');
     } finally {
       setProcessingPlan(null);
     }
@@ -62,8 +62,8 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-900">Escolha seu Plano</h1>
-          <p className="mt-2 text-slate-600">Desbloqueie recursos premium para gerenciar melhor suas assinaturas</p>
+          <h1 className="text-3xl font-bold text-slate-900">Choose Your Plan</h1>
+          <p className="mt-2 text-slate-600">Unlock premium features to better manage your subscriptions</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -71,7 +71,7 @@ export default function PaymentPage() {
             <Card key={plan.id} className={`bg-white shadow-sm p-6 ${plan.recommended ? 'border-2 border-slate-900 relative' : ''}`}>
               {plan.recommended && (
                 <div className="absolute top-0 right-0 bg-slate-900 text-white px-3 py-1 text-sm font-medium rounded-bl-lg">
-                  Recomendado
+                  Recommended
                 </div>
               )}
               <div className="space-y-4">
@@ -91,11 +91,11 @@ export default function PaymentPage() {
                   ))}
                 </ul>
                 <Button 
-                  className="w-full" 
+                  className="w-full cursor-pointer" 
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={loading || processingPlan !== null}
                 >
-                  {processingPlan === plan.id ? 'Processando...' : `Selecionar ${plan.name}`}
+                  {processingPlan === plan.id ? 'Processing...' : `Select ${plan.name}`}
                 </Button>
               </div>
             </Card>
@@ -104,10 +104,10 @@ export default function PaymentPage() {
 
         <div className="text-center">
           <p className="text-sm text-slate-500 mb-4">
-            Pagamento seguro processado pela Stripe. Você pode cancelar a qualquer momento.
+            Secure payment processed by Stripe. You can cancel anytime.
           </p>
           <Button variant="outline" asChild>
-            <Link href="/dashboard">Voltar para o Dashboard</Link>
+            <Link href="/dashboard">Back to Dashboard</Link>
           </Button>
         </div>
       </div>

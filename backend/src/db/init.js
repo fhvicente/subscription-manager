@@ -8,7 +8,7 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// SQL para criar as tabelas
+// SQL para criar as tabelas -> SQL to create tables
 const createTablesSql = `
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   password TEXT NOT NULL,
-  plan TEXT,
+  plan TEXT DEFAULT 'free',
+  premiumUntil TIMESTAMP,
+  stripeCustomerId TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -57,7 +59,9 @@ CREATE TABLE IF NOT EXISTS payment_logs (
   amount REAL NOT NULL,
   status TEXT NOT NULL,
   provider TEXT DEFAULT 'stripe',
-  stripe_session_id TEXT,
+  stripeSessionId TEXT,
+  plan TEXT,
+  notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -76,7 +80,7 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 `;
 
-// Função para gerar um UUID simples
+// Simple UUID generator function
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -84,14 +88,14 @@ function generateUUID() {
   });
 }
 
-// Função assíncrona para criar as tabelas e adicionar dados iniciais
+// Async function to create tables and add initial data
 async function initializeDatabase() {
   return new Promise((resolve, reject) => {
-    // Execute as queries em uma transação
+    // Execute queries in a transaction
     db.serialize(() => {
       db.run('BEGIN TRANSACTION');
 
-      // Criar tabelas
+      // Create tables
       db.exec(createTablesSql, (err) => {
         if (err) {
           console.error('Error creating tables:', err.message);
@@ -100,9 +104,9 @@ async function initializeDatabase() {
           return;
         }
 
-        // Função para adicionar usuários de teste
+        // Function to add test users
         const addUsers = async () => {
-          // Criar usuário admin
+          // Create admin user
           const adminId = generateUUID();
           const adminPassword = await bcrypt.hash('admin123', 10);
           db.run(
@@ -115,7 +119,7 @@ async function initializeDatabase() {
               }
               console.log('Admin user created or already exists');
 
-              // Criar usuário de teste
+              // Create test user
               const testUserId = generateUUID();
               bcrypt.hash('test123', 10, (err, hash) => {
                 if (err) {
@@ -133,7 +137,7 @@ async function initializeDatabase() {
                     }
                     console.log('Test user created or already exists');
 
-                    // Adicionar assinaturas de exemplo
+                    // Add example subscriptions
                     const netflixId = generateUUID();
                     const spotifyId = generateUUID();
                     const thirtyDaysFromNow = new Date();
@@ -161,7 +165,7 @@ async function initializeDatabase() {
                             }
                             console.log('Spotify subscription created or already exists');
 
-                            // Adicionar configurações de notificação para o usuário de teste
+                            // Add notification settings for test user
                             const notificationId = generateUUID();
                             db.run(
                               'INSERT OR IGNORE INTO notification_settings (id, user_id, email_enabled, sms_enabled, push_enabled, days_before_renewal) VALUES (?, ?, ?, ?, ?, ?)',
@@ -199,7 +203,7 @@ async function initializeDatabase() {
           );
         };
 
-        // Iniciar adição de usuários
+        // Start adding users
         addUsers().catch(err => {
           console.error('Error in async operations:', err);
           db.run('ROLLBACK');

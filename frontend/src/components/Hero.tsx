@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link';
+import Image from "next/image";
 import { Button } from '@/components/ui/button';
 
 export default function Hero() {
@@ -10,13 +11,13 @@ export default function Hero() {
                 <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div>
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                            Manage Your <span className="text-primary">Subscriptions</span> Effortlessly
+                            Manage Your <span className="text-[#349793]">Subscriptions</span> Effortlessly
                         </h1>
                         <p className="text-xl text-gray-700 mb-8">
                             Track all your subscriptions in one place, get renewal reminders, and save money by identifying unused services.
                         </p>
                         <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+                            <Button asChild size="lg" className="bg-[#349793] hover:bg-[#386872]">
                                 <Link href="/sign-up">
                                     Start For Free
                                 </Link>
@@ -30,12 +31,8 @@ export default function Hero() {
                     </div>
                     <div className="hidden md:block">
                         <div className="bg-slate-200 h-80 w-full rounded-lg shadow-xl overflow-hidden relative">
-                            <div className="absolute inset-0 flex items-center justify-center text-slate-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect width="18" height="18" x="3" y="3" rx="2" />
-                                    <path d="M3 9h18" />
-                                    <path d="M9 21V9" />
-                                </svg>
+                            <div className="relative w-full h-full bg-[#EFEDE9]">                                
+                                <Image src="/images/hero.png" alt="hero image" fill className="object-contain" />
                             </div>
                         </div>
                     </div>

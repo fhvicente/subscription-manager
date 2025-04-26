@@ -58,7 +58,6 @@ export default function Footer() {
             <h3 className="text-xl font-bold mb-4">Contact</h3>
             <p className="text-gray-400">
               contact@subscriptionmanager.com<br />
-              New York, USA
             </p>
             <div className="flex space-x-4 mt-4">
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white" aria-label="Twitter">

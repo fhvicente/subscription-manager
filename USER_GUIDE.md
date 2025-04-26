@@ -1,166 +1,166 @@
-# Guia do Usuário - Gestor Simples de Assinaturas
+# User Guide - Simple Subscription Manager
 
-Este guia fornece instruções detalhadas sobre como utilizar o Gestor Simples de Assinaturas para gerenciar suas assinaturas e economizar dinheiro.
+This guide provides detailed instructions on how to use the Simple Subscription Manager to manage your subscriptions and save money.
 
-## Índice
+## Index
 
-1. [Primeiros Passos](#primeiros-passos)
+1. [Getting Started](#getting-started)
 2. [Dashboard](#dashboard)
-3. [Gerenciamento de Assinaturas](#gerenciamento-de-assinaturas)
-4. [Configurações de Notificação](#configurações-de-notificação)
-5. [Planos e Pagamentos](#planos-e-pagamentos)
-6. [Perguntas Frequentes](#perguntas-frequentes)
+3. [Subscription Management](#subscription-management)
+4. [Notification Settings](#notification-settings)
+5. [Plans and Payments](#plans-and-payments)
+6. [Frequently Asked Questions](#frequently-asked-questions)
 
-## Primeiros Passos
+## Getting Started
 
-### Criando uma Conta
+### Creating an Account
 
-1. Acesse a página inicial do Gestor Simples de Assinaturas
-2. Clique no botão "Cadastrar" no canto superior direito
-3. Preencha o formulário com seu nome, e-mail e senha
-4. Você também pode se cadastrar usando sua conta do Google ou GitHub
-5. Após o cadastro, você será redirecionado para a página de onboarding
+1. Access the Simple Subscription Manager homepage
+2. Click the "Register" button in the upper right corner
+3. Fill out the form with your name, email, and password
+4. You can also register using your Google or GitHub account
+5. After registration, you will be redirected to the onboarding page
 
 ### Onboarding
 
-Durante o processo de onboarding, você será guiado para:
+During the onboarding process, you will be guided to:
 
-1. Personalizar suas preferências de notificação
-2. Adicionar sua primeira assinatura
-3. Conhecer os recursos disponíveis no plano gratuito e premium
+1. Customize your notification preferences
+2. Add your first subscription
+3. Learn about the features available in the free and premium plans
 
 ## Dashboard
 
-O dashboard é a página principal do aplicativo e oferece uma visão geral de suas assinaturas e gastos.
+The dashboard is the main page of the application and provides an overview of your subscriptions and expenses.
 
-### Elementos do Dashboard
+### Dashboard Elements
 
-- **Resumo de Gastos**: Mostra o total gasto mensalmente e anualmente com assinaturas
-- **Gráfico de Categorias**: Visualização dos gastos por categoria
-- **Próximas Renovações**: Lista das assinaturas que serão renovadas em breve
-- **Calendário de Renovações**: Visualização mensal das datas de renovação
+- **Expense Summary**: Shows the total spent monthly and annually on subscriptions
+- **Category Chart**: Visualization of expenses by category
+- **Upcoming Renewals**: List of subscriptions that will be renewed soon
+- **Renewal Calendar**: Monthly view of renewal dates
 
-### Filtros e Visualizações
+### Filters and Views
 
-Você pode filtrar as informações do dashboard por:
-- Período (mensal, trimestral, anual)
-- Categoria
-- Status da assinatura (ativa/inativa)
+You can filter the dashboard information by:
+- Period (monthly, quarterly, annual)
+- Category
+- Subscription status (active/inactive)
 
-## Gerenciamento de Assinaturas
+## Subscription Management
 
-### Adicionar Nova Assinatura
+### Add New Subscription
 
-1. Clique no botão "+ Nova Assinatura" no dashboard ou na página de assinaturas
-2. Preencha o formulário com as informações da assinatura:
-   - Nome do serviço
-   - Valor
-   - Data de renovação
-   - Frequência (mensal, anual, etc.)
-   - Categoria
-3. Clique em "Salvar" para adicionar a assinatura
+1. Click the "+ New Subscription" button on the dashboard or on the subscriptions page
+2. Fill out the form with the subscription information:
+   - Service name
+   - Amount
+   - Renewal date
+   - Frequency (monthly, annual, etc.)
+   - Category
+3. Click "Save" to add the subscription
 
-### Editar Assinatura
+### Edit Subscription
 
-1. Na página de assinaturas, encontre a assinatura que deseja editar
-2. Clique no ícone de lápis ou no botão "Editar"
-3. Atualize as informações necessárias
-4. Clique em "Salvar" para confirmar as alterações
+1. On the subscriptions page, find the subscription you want to edit
+2. Click the pencil icon or the "Edit" button
+3. Update the necessary information
+4. Click "Save" to confirm the changes
 
-### Excluir Assinatura
+### Delete Subscription
 
-1. Na página de assinaturas, encontre a assinatura que deseja excluir
-2. Clique no ícone de lixeira ou no botão "Excluir"
-3. Confirme a exclusão na janela de diálogo
+1. On the subscriptions page, find the subscription you want to delete
+2. Click the trash icon or the "Delete" button
+3. Confirm the deletion in the dialog window
 
-### Marcar como Inativa/Ativa
+### Mark as Inactive/Active
 
-Se você pausou uma assinatura temporariamente, mas não quer excluí-la:
+If you've temporarily paused a subscription but don't want to delete it:
 
-1. Na página de assinaturas, encontre a assinatura desejada
-2. Clique no botão de alternância (toggle) para marcar como ativa ou inativa
+1. On the subscriptions page, find the desired subscription
+2. Click the toggle button to mark as active or inactive
 
-## Configurações de Notificação
+## Notification Settings
 
-### Configurar Notificações
+### Configure Notifications
 
-1. Acesse a página de "Configurações" no menu principal
-2. Na seção "Notificações", você pode:
-   - Ativar/desativar notificações por e-mail
-   - Ativar/desativar notificações por SMS (plano premium)
-   - Ativar/desativar notificações push (plano premium)
-   - Definir quantos dias antes da renovação deseja ser notificado
+1. Access the "Settings" page in the main menu
+2. In the "Notifications" section, you can:
+   - Enable/disable email notifications
+   - Enable/disable SMS notifications (premium plan)
+   - Enable/disable push notifications (premium plan)
+   - Set how many days before renewal you want to be notified
 
-### Testar Notificações
+### Test Notifications
 
-1. Na página de configurações de notificação
-2. Clique no botão "Enviar Notificação de Teste"
-3. Selecione o tipo de notificação que deseja testar
-4. Verifique se recebeu a notificação de teste
+1. On the notification settings page
+2. Click the "Send Test Notification" button
+3. Select the type of notification you want to test
+4. Verify that you received the test notification
 
-## Planos e Pagamentos
+## Plans and Payments
 
-### Plano Gratuito
+### Free Plan
 
-O plano gratuito inclui:
-- Até 5 assinaturas
-- Notificações por e-mail
-- Estatísticas básicas
+The free plan includes:
+- Up to 5 subscriptions
+- Email notifications
+- Basic statistics
 
-### Plano Premium
+### Premium Plan
 
-O plano premium inclui:
-- Assinaturas ilimitadas
-- Notificações por e-mail, SMS e push
-- Estatísticas avançadas
-- Relatórios detalhados
-- Suporte prioritário
+The premium plan includes:
+- Unlimited subscriptions
+- Email, SMS, and push notifications
+- Advanced statistics
+- Detailed reports
+- Priority support
 
-### Fazer Upgrade para o Plano Premium
+### Upgrade to Premium Plan
 
-1. Acesse a página "Planos" no menu principal
-2. Compare os recursos disponíveis em cada plano
-3. Clique em "Selecionar Plano" no card do plano premium
-4. Escolha entre pagamento mensal ou anual
-5. Complete o processo de pagamento com cartão de crédito via Stripe
-6. Após a confirmação do pagamento, seu plano será atualizado automaticamente
+1. Access the "Plans" page in the main menu
+2. Compare the features available in each plan
+3. Click "Select Plan" on the premium plan card
+4. Choose between monthly or annual payment
+5. Complete the payment process with a credit card via Stripe
+6. After payment confirmation, your plan will be automatically updated
 
-### Gerenciar Assinatura Premium
+### Manage Premium Subscription
 
-1. Acesse a página "Configurações" no menu principal
-2. Na seção "Assinatura", você pode:
-   - Ver detalhes do seu plano atual
-   - Ver a data de renovação
-   - Cancelar a assinatura premium
+1. Access the "Settings" page in the main menu
+2. In the "Subscription" section, you can:
+   - View details of your current plan
+   - View the renewal date
+   - Cancel the premium subscription
 
-## Perguntas Frequentes
+## Frequently Asked Questions
 
-### Como cancelar minha assinatura premium?
+### How do I cancel my premium subscription?
 
-Você pode cancelar sua assinatura premium a qualquer momento:
-1. Acesse "Configurações" > "Assinatura"
-2. Clique em "Cancelar Assinatura"
-3. Confirme o cancelamento
+You can cancel your premium subscription at any time:
+1. Access "Settings" > "Subscription"
+2. Click "Cancel Subscription"
+3. Confirm the cancellation
 
-Você continuará tendo acesso aos recursos premium até o final do período pago.
+You will continue to have access to premium features until the end of the paid period.
 
-### O que acontece com minhas assinaturas se eu voltar para o plano gratuito?
+### What happens to my subscriptions if I return to the free plan?
 
-Se você tiver mais de 5 assinaturas cadastradas e voltar para o plano gratuito, todas as suas assinaturas permanecerão visíveis, mas você não poderá adicionar novas assinaturas até que o número total seja reduzido para menos de 5.
+If you have more than 5 subscriptions registered and return to the free plan, all your subscriptions will remain visible, but you won't be able to add new subscriptions until the total number is reduced to less than 5.
 
-### Como atualizar meus dados de pagamento?
+### How do I update my payment information?
 
-1. Acesse "Configurações" > "Assinatura"
-2. Clique em "Atualizar Método de Pagamento"
-3. Você será redirecionado para o Stripe para atualizar suas informações de pagamento
+1. Access "Settings" > "Subscription"
+2. Click "Update Payment Method"
+3. You will be redirected to Stripe to update your payment information
 
-### Posso transferir minhas assinaturas para outra conta?
+### Can I transfer my subscriptions to another account?
 
-Atualmente não oferecemos a funcionalidade de transferência de assinaturas entre contas. Recomendamos exportar seus dados e cadastrá-los na nova conta.
+We currently do not offer the functionality to transfer subscriptions between accounts. We recommend exporting your data and registering them in the new account.
 
-### Como exportar meus dados?
+### How do I export my data?
 
-1. Acesse "Configurações" > "Dados"
-2. Clique em "Exportar Dados"
-3. Escolha o formato desejado (CSV ou JSON)
-4. Clique em "Baixar"
+1. Access "Settings" > "Data"
+2. Click "Export Data"
+3. Choose the desired format (CSV or JSON)
+4. Click "Download"

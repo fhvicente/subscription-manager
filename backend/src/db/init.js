@@ -1,12 +1,20 @@
 import db from './database.js';
-import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { generateUUID } from '../controllers/authController.js';
+import bcrypt from 'bcrypt';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Ensure the database directory exists
+const dbDir = path.join(__dirname, '../../data');
+if (!fs.existsSync(dbDir)) {
+  console.log(`Creating database directory: ${dbDir}`);
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 // SQL para criar as tabelas -> SQL to create tables
 const createTablesSql = `
@@ -80,15 +88,7 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 `;
 
-// Simple UUID generator function
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
-
-// Async function to create tables and add initial data
+// Async function to create tables and add admin user
 async function initializeDatabase() {
   return new Promise((resolve, reject) => {
     // Execute queries in a transaction
@@ -96,7 +96,7 @@ async function initializeDatabase() {
       db.run('BEGIN TRANSACTION');
 
       // Create tables
-      db.exec(createTablesSql, (err) => {
+      db.exec(createTablesSql, async (err) => {
         if (err) {
           console.error('Error creating tables:', err.message);
           db.run('ROLLBACK');
@@ -104,111 +104,43 @@ async function initializeDatabase() {
           return;
         }
 
-        // Function to add test users
-        const addUsers = async () => {
+        try {
           // Create admin user
           const adminId = generateUUID();
           const adminPassword = await bcrypt.hash('admin123', 10);
+          
           db.run(
             'INSERT OR IGNORE INTO users (id, email, name, password, plan) VALUES (?, ?, ?, ?, ?)',
             [adminId, 'admin@example.com', 'Admin User', adminPassword, 'admin'],
             function(err) {
               if (err) {
                 console.error('Error adding admin user:', err.message);
+                db.run('ROLLBACK');
+                reject(err);
                 return;
               }
               console.log('Admin user created or already exists');
 
-              // Create test user
-              const testUserId = generateUUID();
-              bcrypt.hash('test123', 10, (err, hash) => {
+              db.run('COMMIT', function(err) {
                 if (err) {
-                  console.error('Error hashing password:', err.message);
+                  console.error('Error committing transaction:', err.message);
+                  db.run('ROLLBACK');
+                  reject(err);
                   return;
                 }
-
-                db.run(
-                  'INSERT OR IGNORE INTO users (id, email, name, password, plan) VALUES (?, ?, ?, ?, ?)',
-                  [testUserId, 'user@example.com', 'Test User', hash, 'free'],
-                  function(err) {
-                    if (err) {
-                      console.error('Error adding test user:', err.message);
-                      return;
-                    }
-                    console.log('Test user created or already exists');
-
-                    // Add example subscriptions
-                    const netflixId = generateUUID();
-                    const spotifyId = generateUUID();
-                    const thirtyDaysFromNow = new Date();
-                    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-                    const fourteenDaysFromNow = new Date();
-                    fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
-
-                    db.run(
-                      'INSERT OR IGNORE INTO subscriptions (id, user_id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                      [netflixId, testUserId, 'Netflix', 'Streaming service', thirtyDaysFromNow.toISOString(), 15.99, 'active'],
-                      function(err) {
-                        if (err) {
-                          console.error('Error adding Netflix subscription:', err.message);
-                          return;
-                        }
-                        console.log('Netflix subscription created or already exists');
-
-                        db.run(
-                          'INSERT OR IGNORE INTO subscriptions (id, user_id, name, description, due_date, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                          [spotifyId, testUserId, 'Spotify', 'Music streaming', fourteenDaysFromNow.toISOString(), 9.99, 'active'],
-                          function(err) {
-                            if (err) {
-                              console.error('Error adding Spotify subscription:', err.message);
-                              return;
-                            }
-                            console.log('Spotify subscription created or already exists');
-
-                            // Add notification settings for test user
-                            const notificationId = generateUUID();
-                            db.run(
-                              'INSERT OR IGNORE INTO notification_settings (id, user_id, email_enabled, sms_enabled, push_enabled, days_before_renewal) VALUES (?, ?, ?, ?, ?, ?)',
-                              [notificationId, testUserId, 1, 0, 0, 3],
-                              function(err) {
-                                if (err) {
-                                  console.error('Error adding notification settings:', err.message);
-                                  return;
-                                }
-                                console.log('Notification settings created or already exists');
-
-                                db.run('COMMIT', function(err) {
-                                  if (err) {
-                                    console.error('Error committing transaction:', err.message);
-                                    db.run('ROLLBACK');
-                                    reject(err);
-                                    return;
-                                  }
-                                  console.log('Database initialized successfully!');
-                                  console.log('\nTest accounts:');
-                                  console.log('- Admin: admin@example.com / admin123');
-                                  console.log('- User: user@example.com / test123');
-                                  resolve();
-                                });
-                              }
-                            );
-                          }
-                        );
-                      }
-                    );
-                  }
-                );
+                console.log('Database initialized successfully!');
+                console.log('\nAdmin account:');
+                console.log('- Email: admin@example.com');
+                console.log('- Password: admin123');
+                resolve();
               });
             }
           );
-        };
-
-        // Start adding users
-        addUsers().catch(err => {
-          console.error('Error in async operations:', err);
+        } catch (error) {
+          console.error('Error in async operations:', error);
           db.run('ROLLBACK');
-          reject(err);
-        });
+          reject(error);
+        }
       });
     });
   });

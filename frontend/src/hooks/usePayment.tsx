@@ -3,12 +3,10 @@
 import { useApi } from '@/lib/api';
 import { useState, useCallback, useEffect } from 'react';
 import Cookies from 'js-cookie';
-import { useRouter } from 'next/navigation';
 
 // Hook to manage payment and subscription functionality
 export function usePayment() {
   const api = useApi();
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTokenValid, setIsTokenValid] = useState(true);

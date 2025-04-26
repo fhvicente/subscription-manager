@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { get, run, query } from '../db/database.js';
-import { generateUUID } from '../controllers/authController.js';
+import { generateUUID } from './authController.js';
 
 // Safely initialize Stripe if API key is available
 let stripe;

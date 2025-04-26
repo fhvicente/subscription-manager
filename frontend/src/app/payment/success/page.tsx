@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePayment } from "@/hooks/usePayment";
-import Cookies from 'js-cookie';
 import { useAuth } from "@/lib/auth";
 
 // Define subscription type
@@ -14,6 +13,13 @@ interface Subscription {
   plan?: string;
   premiumUntil?: string;
   isActive?: boolean;
+}
+
+// Define error type
+interface ApiError extends Error {
+  response?: {
+    status: number;
+  };
 }
 
 function PaymentSuccessContent() {
@@ -103,7 +109,7 @@ function PaymentSuccessContent() {
       console.error('Error fetching subscription status:', error);
       
       // If it's a 401 error, set authError to show login message
-      if ((error as any)?.response?.status === 401) {
+      if ((error as ApiError)?.response?.status === 401) {
         setAuthError(true);
       }
     } finally {

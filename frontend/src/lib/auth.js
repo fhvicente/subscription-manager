@@ -112,11 +112,6 @@ export const AuthProvider = ({ children }) => {
     return !!token; // Simplified check - if there's a token, consider authenticated
   };
 
-  // Check if token exists
-  const hasToken = () => {
-    return !!Cookies.get('token');
-  };
-
   // Refresh user data
   const refreshUser = async () => {
     const token = Cookies.get('token');

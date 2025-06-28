@@ -1,19 +1,19 @@
-import db from './database.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { generateUUID } from '../controllers/authController.js';
-import bcrypt from 'bcrypt';
+import db from "./database.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import { generateUUID } from "../controllers/authController.js";
+import bcrypt from "bcrypt";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Ensure the database directory exists
-const dbDir = path.join(__dirname, '../../data');
+const dbDir = path.join(__dirname, "../../data");
 if (!fs.existsSync(dbDir)) {
-  console.log(`Creating database directory: ${dbDir}`);
-  fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`Creating database directory: ${dbDir}`);
+    fs.mkdirSync(dbDir, { recursive: true });
 }
 
 // SQL para criar as tabelas -> SQL to create tables
@@ -90,69 +90,83 @@ CREATE TABLE IF NOT EXISTS todos (
 
 // Async function to create tables and add admin user
 async function initializeDatabase() {
-  return new Promise((resolve, reject) => {
-    // Execute queries in a transaction
-    db.serialize(() => {
-      db.run('BEGIN TRANSACTION');
+    return new Promise((resolve, reject) => {
+        // Execute queries in a transaction
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
 
-      // Create tables
-      db.exec(createTablesSql, async (err) => {
-        if (err) {
-          console.error('Error creating tables:', err.message);
-          db.run('ROLLBACK');
-          reject(err);
-          return;
-        }
-
-        try {
-          // Create admin user
-          const adminId = generateUUID();
-          const adminPassword = await bcrypt.hash('admin123', 10);
-          
-          db.run(
-            'INSERT OR IGNORE INTO users (id, email, name, password, plan) VALUES (?, ?, ?, ?, ?)',
-            [adminId, 'admin@example.com', 'Admin User', adminPassword, 'admin'],
-            function(err) {
-              if (err) {
-                console.error('Error adding admin user:', err.message);
-                db.run('ROLLBACK');
-                reject(err);
-                return;
-              }
-              console.log('Admin user created or already exists');
-
-              db.run('COMMIT', function(err) {
+            // Create tables
+            db.exec(createTablesSql, async (err) => {
                 if (err) {
-                  console.error('Error committing transaction:', err.message);
-                  db.run('ROLLBACK');
-                  reject(err);
-                  return;
+                    console.error("Error creating tables:", err.message);
+                    db.run("ROLLBACK");
+                    reject(err);
+                    return;
                 }
-                console.log('Database initialized successfully!');
-                console.log('\nAdmin account:');
-                console.log('- Email: admin@example.com');
-                console.log('- Password: admin123');
-                resolve();
-              });
-            }
-          );
-        } catch (error) {
-          console.error('Error in async operations:', error);
-          db.run('ROLLBACK');
-          reject(error);
-        }
-      });
+
+                try {
+                    // Create admin user
+                    const adminId = generateUUID();
+                    const adminPassword = await bcrypt.hash("admin123", 10);
+
+                    db.run(
+                        "INSERT OR IGNORE INTO users (id, email, name, password, plan) VALUES (?, ?, ?, ?, ?)",
+                        [
+                            adminId,
+                            "admin@example.com",
+                            "Admin User",
+                            adminPassword,
+                            "admin",
+                        ],
+                        function (err) {
+                            if (err) {
+                                console.error(
+                                    "Error adding admin user:",
+                                    err.message
+                                );
+                                db.run("ROLLBACK");
+                                reject(err);
+                                return;
+                            }
+                            console.log("Admin user created or already exists");
+
+                            db.run("COMMIT", function (err) {
+                                if (err) {
+                                    console.error(
+                                        "Error committing transaction:",
+                                        err.message
+                                    );
+                                    db.run("ROLLBACK");
+                                    reject(err);
+                                    return;
+                                }
+                                console.log(
+                                    "Database initialized successfully!"
+                                );
+                                console.log("\nAdmin account:");
+                                console.log("- Email: admin@example.com");
+                                console.log("- Password: admin123");
+                                resolve();
+                            });
+                        }
+                    );
+                } catch (error) {
+                    console.error("Error in async operations:", error);
+                    db.run("ROLLBACK");
+                    reject(error);
+                }
+            });
+        });
     });
-  });
 }
 
 // Executar inicialização
 initializeDatabase()
-  .then(() => {
-    console.log('Database initialization completed successfully');
-    process.exit(0);
-  })
-  .catch(err => {
-    console.error('Database initialization failed:', err);
-    process.exit(1);
-  }); 
+    .then(() => {
+        console.log("Database initialization completed successfully");
+        process.exit(0);
+    })
+    .catch((err) => {
+        console.error("Database initialization failed:", err);
+        process.exit(1);
+    });

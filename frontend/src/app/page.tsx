@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import MainLayout from "@/components/layouts/MainLayout";
 import Features from "@/components/Features";

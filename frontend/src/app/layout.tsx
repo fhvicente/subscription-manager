@@ -5,12 +5,11 @@ import { AuthProvider } from "@/lib/auth";
 import { ApiProvider } from "@/lib/api";
 import { AnalyticsProvider } from "@/lib/analytics";
 
-
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
     title: "SubTrack",
-    description: "Manage your subscriptions and save money"
+    description: "Manage your subscriptions and save money",
 };
 
 export default function RootLayout({
@@ -23,8 +22,13 @@ export default function RootLayout({
             <ApiProvider>
                 <AnalyticsProvider>
                     <html lang="en" suppressHydrationWarning>
-                        <body className={inter.className} suppressHydrationWarning>{children}</body>
-                    </html>        
+                        <body
+                            className={inter.className}
+                            suppressHydrationWarning
+                        >
+                            {children}
+                        </body>
+                    </html>
                 </AnalyticsProvider>
             </ApiProvider>
         </AuthProvider>

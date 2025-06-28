@@ -12,7 +12,7 @@ export default function SignUpPage() {
         name: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
     });
     const [isLoading, setIsLoading] = useState(false);
     const [validationError, setValidationError] = useState("");
@@ -21,9 +21,9 @@ export default function SignUpPage() {
         const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
-        
+
         // Clear validation error when user types
         if (validationError) {
             setValidationError("");
@@ -53,7 +53,7 @@ export default function SignUpPage() {
 
         try {
             const result = await register({ name, email, password });
-            
+
             if (result.success) {
                 router.push("/dashboard");
             }
@@ -68,19 +68,26 @@ export default function SignUpPage() {
         <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
             <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg">
                 <div className="mb-6 text-center">
-                    <h1 className="text-xl font-bold text-slate-900">Create an Account</h1>
-                    <p className="text-slate-600">Join SubTrack to manage your subscriptions</p>
+                    <h1 className="text-xl font-bold text-slate-900">
+                        Create an Account
+                    </h1>
+                    <p className="text-slate-600">
+                        Join SubTrack to manage your subscriptions
+                    </p>
                 </div>
-                
+
                 {(error || validationError) && (
                     <div className="mb-4 rounded bg-red-100 p-3 text-sm text-red-700">
                         {validationError || error}
                     </div>
                 )}
-                
+
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700">
+                        <label
+                            htmlFor="name"
+                            className="mb-1 block text-sm font-medium text-slate-700"
+                        >
                             Name
                         </label>
                         <input
@@ -93,9 +100,12 @@ export default function SignUpPage() {
                             onChange={handleChange}
                         />
                     </div>
-                    
+
                     <div className="mb-4">
-                        <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+                        <label
+                            htmlFor="email"
+                            className="mb-1 block text-sm font-medium text-slate-700"
+                        >
                             Email
                         </label>
                         <input
@@ -108,9 +118,12 @@ export default function SignUpPage() {
                             onChange={handleChange}
                         />
                     </div>
-                    
+
                     <div className="mb-4">
-                        <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+                        <label
+                            htmlFor="password"
+                            className="mb-1 block text-sm font-medium text-slate-700"
+                        >
                             Password
                         </label>
                         <input
@@ -122,11 +135,16 @@ export default function SignUpPage() {
                             value={formData.password}
                             onChange={handleChange}
                         />
-                        <p className="mt-1 text-xs text-slate-500">Password must be at least 8 characters</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Password must be at least 8 characters
+                        </p>
                     </div>
-                    
+
                     <div className="mb-6">
-                        <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
+                        <label
+                            htmlFor="confirmPassword"
+                            className="mb-1 block text-sm font-medium text-slate-700"
+                        >
                             Confirm Password
                         </label>
                         <input
@@ -139,7 +157,7 @@ export default function SignUpPage() {
                             onChange={handleChange}
                         />
                     </div>
-                    
+
                     <button
                         type="submit"
                         disabled={isLoading}
@@ -148,10 +166,15 @@ export default function SignUpPage() {
                         {isLoading ? "Creating account..." : "Sign Up"}
                     </button>
                 </form>
-                
+
                 <div className="mt-6 text-center text-sm">
-                    <span className="text-slate-600">Already have an account? </span>
-                    <Link href="/sign-in" className="font-medium text-slate-900 hover:underline">
+                    <span className="text-slate-600">
+                        Already have an account?{" "}
+                    </span>
+                    <Link
+                        href="/sign-in"
+                        className="font-medium text-slate-900 hover:underline"
+                    >
                         Sign In
                     </Link>
                 </div>

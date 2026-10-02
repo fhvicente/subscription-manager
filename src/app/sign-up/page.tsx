@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import Logo from "@/components/Logo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useStaggerReveal } from "@/lib/gsap";
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -16,6 +21,8 @@ export default function SignUpPage() {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [validationError, setValidationError] = useState("");
+    const root = useRef<HTMLDivElement>(null);
+    useStaggerReveal(root);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -65,120 +72,134 @@ export default function SignUpPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-            <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg">
-                <div className="mb-6 text-center">
-                    <h1 className="text-xl font-bold text-slate-900">
-                        Create an Account
-                    </h1>
-                    <p className="text-slate-600">
-                        Join SubTrack to manage your subscriptions
+        <div
+            ref={root}
+            className="flex min-h-svh flex-col bg-paper text-ink lg:grid lg:grid-cols-2"
+        >
+            <aside className="flex flex-col justify-between gap-8 bg-acid px-5 py-6 text-ink sm:px-8 lg:min-h-svh lg:p-12">
+                <Link
+                    href="/"
+                    aria-label="SubTrack home"
+                    className="w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-acid"
+                >
+                    <Logo />
+                </Link>
+                <p
+                    data-reveal
+                    className="display max-w-[14ch] text-[clamp(2.25rem,9vw,3.5rem)] lg:text-[clamp(4rem,7vw,7rem)]"
+                >
+                    Stop paying for things you forgot.
+                </p>
+            </aside>
+
+            <main className="flex flex-1 items-center px-5 py-12 sm:px-8 lg:px-16">
+                <div className="w-full max-w-sm">
+                    <div data-reveal className="mb-8">
+                        <p className="eyebrow text-ink-soft">Create account</p>
+                        <h1 className="display mt-3 text-4xl">
+                            Free to start.
+                        </h1>
+                    </div>
+
+                    {(error || validationError) && (
+                        <div
+                            role="alert"
+                            className="mb-6 rounded-xl border-[1.5px] border-leak-deep bg-leak-deep/5 p-4 text-sm font-medium text-leak-deep"
+                        >
+                            Error: {validationError || error}
+                        </div>
+                    )}
+
+                    <form
+                        data-reveal
+                        onSubmit={handleSubmit}
+                        className="space-y-5"
+                    >
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                id="name"
+                                name="name"
+                                type="text"
+                                autoComplete="name"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                                aria-describedby="password-hint"
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
+                            <p
+                                id="password-hint"
+                                className="text-xs text-ink-soft"
+                            >
+                                At least 8 characters.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">
+                                Confirm password
+                            </Label>
+                            <Input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            size="lg"
+                            disabled={isLoading}
+                            className="mt-3 w-full"
+                        >
+                            {isLoading
+                                ? "Creating account..."
+                                : "Create account"}
+                        </Button>
+                    </form>
+
+                    <p data-reveal className="mt-8 text-sm text-ink-soft">
+                        Already have an account?{" "}
+                        <Button
+                            asChild
+                            variant="link"
+                            className="h-auto text-sm"
+                        >
+                            <Link href="/sign-in">Sign in</Link>
+                        </Button>
                     </p>
                 </div>
-
-                {(error || validationError) && (
-                    <div className="mb-4 rounded bg-red-100 p-3 text-sm text-red-700">
-                        {validationError || error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label
-                            htmlFor="name"
-                            className="mb-1 block text-sm font-medium text-slate-700"
-                        >
-                            Name
-                        </label>
-                        <input
-                            id="name"
-                            name="name"
-                            type="text"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.name}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="mb-4">
-                        <label
-                            htmlFor="email"
-                            className="mb-1 block text-sm font-medium text-slate-700"
-                        >
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.email}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <div className="mb-4">
-                        <label
-                            htmlFor="password"
-                            className="mb-1 block text-sm font-medium text-slate-700"
-                        >
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.password}
-                            onChange={handleChange}
-                        />
-                        <p className="mt-1 text-xs text-slate-500">
-                            Password must be at least 8 characters
-                        </p>
-                    </div>
-
-                    <div className="mb-6">
-                        <label
-                            htmlFor="confirmPassword"
-                            className="mb-1 block text-sm font-medium text-slate-700"
-                        >
-                            Confirm Password
-                        </label>
-                        <input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type="password"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 focus:outline-none disabled:opacity-70"
-                    >
-                        {isLoading ? "Creating account..." : "Sign Up"}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm">
-                    <span className="text-slate-600">
-                        Already have an account?{" "}
-                    </span>
-                    <Link
-                        href="/sign-in"
-                        className="font-medium text-slate-900 hover:underline"
-                    >
-                        Sign In
-                    </Link>
-                </div>
-            </div>
+            </main>
         </div>
     );
 }

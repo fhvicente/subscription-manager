@@ -1,14 +1,19 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePayment } from "@/hooks/usePayment";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Check } from "lucide-react";
+import Logo from "@/components/Logo";
+import { cn } from "@/lib/utils";
+import { useStaggerReveal } from "@/lib/gsap";
 
 export default function PaymentPage() {
     const { createCheckoutSession, loading } = usePayment();
     const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+    const root = useRef<HTMLDivElement>(null);
+    useStaggerReveal(root);
 
     const plans = [
         {
@@ -33,7 +38,7 @@ export default function PaymentPage() {
                 "Email and SMS notifications",
                 "Detailed reports",
                 "Priority support",
-                "Save 20%",
+                "Save 16%",
             ],
             recommended: true,
         },
@@ -53,7 +58,7 @@ export default function PaymentPage() {
         } catch (error) {
             console.error("Error creating checkout session:", error);
             alert(
-                "An error occurred while processing your request. Please try again."
+                "An error occurred while processing your request. Please try again.",
             );
         } finally {
             setProcessingPlan(null);
@@ -61,88 +66,111 @@ export default function PaymentPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <div className="max-w-4xl w-full space-y-8">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold text-slate-900">
-                        Choose Your Plan
-                    </h1>
-                    <p className="mt-2 text-slate-600">
-                        Unlock premium features to better manage your
-                        subscriptions
-                    </p>
-                </div>
+        <div ref={root} className="min-h-svh bg-paper text-ink">
+            <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 lg:py-12">
+                <Link
+                    href="/"
+                    aria-label="SubTrack home"
+                    className="inline-flex w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                >
+                    <Logo />
+                </Link>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <header data-reveal className="mt-12 max-w-2xl lg:mt-16">
+                    <p className="eyebrow text-ink-soft">Premium</p>
+                    <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)]">
+                        Pick a plan.
+                    </h1>
+                    <p className="mt-4 text-lg leading-relaxed text-ink-soft">
+                        Unlock the premium features and keep every renewal in
+                        check.
+                    </p>
+                </header>
+
+                <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                     {plans.map((plan) => (
-                        <Card
+                        <section
                             key={plan.id}
-                            className={`bg-white shadow-sm p-6 ${
+                            data-reveal
+                            aria-labelledby={`plan-${plan.id}`}
+                            className={cn(
+                                "flex flex-col rounded-xl p-6 sm:p-8",
                                 plan.recommended
-                                    ? "border-2 border-slate-900 relative"
-                                    : ""
-                            }`}
-                        >
-                            {plan.recommended && (
-                                <div className="absolute top-0 right-0 bg-slate-900 text-white px-3 py-1 text-sm font-medium rounded-bl-lg">
-                                    Recommended
-                                </div>
+                                    ? "bg-acid text-ink"
+                                    : "border-[1.5px] border-ink bg-card",
                             )}
-                            <div className="space-y-4">
-                                <h2 className="text-xl font-bold text-slate-900">
+                        >
+                            <div className="flex items-center justify-between gap-4">
+                                <h2
+                                    id={`plan-${plan.id}`}
+                                    className="font-wide text-xl font-extrabold tracking-[-0.03em]"
+                                >
                                     {plan.name}
                                 </h2>
-                                <div>
-                                    <span className="text-3xl font-bold text-slate-900">
-                                        {plan.price}
+                                {plan.recommended && (
+                                    <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-acid">
+                                        Recommended
                                     </span>
-                                    <span className="text-slate-600 ml-1">
-                                        {plan.period}
-                                    </span>
-                                </div>
-                                <ul className="space-y-2">
-                                    {plan.features.map((feature, index) => (
-                                        <li
-                                            key={index}
-                                            className="flex items-center"
-                                        >
-                                            <svg
-                                                className="h-5 w-5 text-green-500 mr-2"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                            <span className="text-slate-700">
-                                                {feature}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <Button
-                                    className="w-full cursor-pointer"
-                                    onClick={() => handleSelectPlan(plan.id)}
-                                    disabled={
-                                        loading || processingPlan !== null
-                                    }
-                                >
-                                    {processingPlan === plan.id
-                                        ? "Processing..."
-                                        : `Select ${plan.name}`}
-                                </Button>
+                                )}
                             </div>
-                        </Card>
+                            <p className="mt-6 flex items-baseline gap-2">
+                                <span className="display text-[clamp(3rem,8vw,4.5rem)] tabular-nums">
+                                    {plan.price}
+                                </span>
+                                <span
+                                    className={cn(
+                                        "text-sm font-medium",
+                                        !plan.recommended && "text-ink-soft",
+                                    )}
+                                >
+                                    {plan.period}
+                                </span>
+                            </p>
+                            <ul
+                                className={cn(
+                                    "mt-6 flex-1 divide-y border-y",
+                                    plan.recommended
+                                        ? "divide-ink/20 border-ink/20"
+                                        : "divide-ink/10 border-ink/10",
+                                )}
+                            >
+                                {plan.features.map((feature, index) => (
+                                    <li
+                                        key={index}
+                                        className="flex items-center gap-3 py-2.5"
+                                    >
+                                        <Check
+                                            aria-hidden="true"
+                                            className="size-4 shrink-0"
+                                            strokeWidth={3}
+                                        />
+                                        <span>{feature}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <Button
+                                size="lg"
+                                className={cn(
+                                    "mt-8 w-full",
+                                    plan.recommended &&
+                                        "hover:bg-paper hover:text-ink",
+                                )}
+                                onClick={() => handleSelectPlan(plan.id)}
+                                disabled={loading || processingPlan !== null}
+                            >
+                                {processingPlan === plan.id
+                                    ? "Processing..."
+                                    : `Select ${plan.name}`}
+                            </Button>
+                        </section>
                     ))}
                 </div>
 
-                <div className="text-center">
-                    <p className="text-sm text-slate-500 mb-4">
+                <div
+                    data-reveal
+                    className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <p className="text-sm text-ink-soft">
                         Secure payment processed by Stripe. You can cancel
                         anytime.
                     </p>

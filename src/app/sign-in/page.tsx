@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import Logo from "@/components/Logo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useStaggerReveal } from "@/lib/gsap";
 
 export default function SignInPage() {
     const router = useRouter();
@@ -13,6 +18,8 @@ export default function SignInPage() {
         password: "",
     });
     const [isLoading, setIsLoading] = useState(false);
+    const root = useRef<HTMLDivElement>(null);
+    useStaggerReveal(root);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -41,79 +48,95 @@ export default function SignInPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-            <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-lg">
-                <div className="mb-6 text-center">
-                    <h1 className="text-xl font-bold text-slate-900">
-                        Sign In
-                    </h1>
-                    <p className="text-slate-600">Welcome back to SubTrack</p>
-                </div>
+        <div
+            ref={root}
+            className="flex min-h-svh flex-col bg-paper text-ink lg:grid lg:grid-cols-2"
+        >
+            <aside className="flex flex-col justify-between gap-8 bg-acid px-5 py-6 text-ink sm:px-8 lg:min-h-svh lg:p-12">
+                <Link
+                    href="/"
+                    aria-label="SubTrack home"
+                    className="w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-acid"
+                >
+                    <Logo />
+                </Link>
+                <p
+                    data-reveal
+                    className="display max-w-[12ch] text-[clamp(2.25rem,9vw,3.5rem)] lg:text-[clamp(4rem,7vw,7rem)]"
+                >
+                    Back to plugging leaks.
+                </p>
+            </aside>
 
-                {error && (
-                    <div className="mb-4 rounded bg-red-100 p-3 text-sm text-red-700">
-                        {error}
+            <main className="flex flex-1 items-center px-5 py-12 sm:px-8 lg:px-16">
+                <div className="w-full max-w-sm">
+                    <div data-reveal className="mb-8">
+                        <p className="eyebrow text-ink-soft">Sign in</p>
+                        <h1 className="display mt-3 text-4xl">Welcome back.</h1>
                     </div>
-                )}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label
-                            htmlFor="email"
-                            className="mb-1 block text-sm font-medium text-slate-700"
+                    {error && (
+                        <div
+                            role="alert"
+                            className="mb-6 rounded-xl border-[1.5px] border-leak-deep bg-leak-deep/5 p-4 text-sm font-medium text-leak-deep"
                         >
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.email}
-                            onChange={handleChange}
-                        />
-                    </div>
+                            Error: {error}
+                        </div>
+                    )}
 
-                    <div className="mb-6">
-                        <label
-                            htmlFor="password"
-                            className="mb-1 block text-sm font-medium text-slate-700"
+                    <form
+                        data-reveal
+                        onSubmit={handleSubmit}
+                        className="space-y-5"
+                    >
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            size="lg"
+                            disabled={isLoading}
+                            className="mt-3 w-full"
                         >
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            className="w-full rounded-md border border-slate-300 p-2 focus:border-slate-500 focus:outline-none"
-                            value={formData.password}
-                            onChange={handleChange}
-                        />
-                    </div>
+                            {isLoading ? "Signing in..." : "Sign in"}
+                        </Button>
+                    </form>
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 focus:outline-none disabled:opacity-70"
-                    >
-                        {isLoading ? "Signing in..." : "Sign In"}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm">
-                    <span className="text-slate-600">
-                        Don&apos;t have an account?{" "}
-                    </span>
-                    <Link
-                        href="/sign-up"
-                        className="font-medium text-slate-900 hover:underline"
-                    >
-                        Sign Up
-                    </Link>
+                    <p data-reveal className="mt-8 text-sm text-ink-soft">
+                        No account yet?{" "}
+                        <Button
+                            asChild
+                            variant="link"
+                            className="h-auto text-sm"
+                        >
+                            <Link href="/sign-up">Create one, free</Link>
+                        </Button>
+                    </p>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

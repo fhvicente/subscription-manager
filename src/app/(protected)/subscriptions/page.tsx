@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { Loader2, Trash2 } from "lucide-react";
+import { useStaggerReveal } from "@/lib/gsap";
 
 // Types
 interface Subscription {
@@ -25,6 +25,9 @@ export default function SubscriptionsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useStaggerReveal(rootRef, [isLoading]);
 
     // Fetch subscriptions from API
     const fetchSubscriptions = useCallback(async () => {
@@ -74,90 +77,133 @@ export default function SubscriptionsPage() {
             : "monthly";
     };
 
+    const statusPill = (status: string) =>
+        status === "active"
+            ? "bg-acid text-ink"
+            : status === "overdue" || status === "failed"
+              ? "bg-leak-deep text-paper"
+              : "bg-paper-2 text-ink-soft";
+
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-700" />
+            <div ref={rootRef} className="flex h-64 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-ink" aria-label="Loading subscriptions" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-slate-900">
-                    My Subscriptions
-                </h1>
-                <Button asChild>
-                    <Link href="/subscriptions/new">Add Subscription</Link>
+        <div ref={rootRef} className="space-y-10">
+            <header
+                data-reveal
+                className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+            >
+                <div>
+                    <p className="eyebrow text-ink-soft">
+                        <span className="tabular-nums">{subscriptions.length}</span>{" "}
+                        tracked
+                    </p>
+                    <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] text-ink">
+                        Subscriptions
+                    </h1>
+                </div>
+                <Button asChild className="self-start sm:self-auto">
+                    <Link href="/subscriptions/new">Add subscription</Link>
                 </Button>
-            </div>
+            </header>
 
-            {/* Subscriptions List */}
-            <Card className="bg-white shadow-sm overflow-hidden">
-                {subscriptions.length > 0 ? (
-                    <div className="divide-y divide-slate-200">
+            {subscriptions.length > 0 ? (
+                <div data-reveal>
+                    <div
+                        aria-hidden="true"
+                        className="eyebrow hidden grid-cols-[1fr_7rem_6rem_9rem_7rem] gap-4 rounded-md bg-paper-2 px-4 py-2.5 text-ink-soft md:grid"
+                    >
+                        <span>Name</span>
+                        <span>Renews</span>
+                        <span>Status</span>
+                        <span className="text-right">Price</span>
+                        <span />
+                    </div>
+                    <ul className="divide-y divide-ink/10">
                         {subscriptions.map((sub) => (
-                            <div
+                            <li
                                 key={sub.id}
-                                className="p-4 flex justify-between items-center"
+                                className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 py-4 md:grid-cols-[1fr_7rem_6rem_9rem_7rem]"
                             >
-                                <div>
-                                    <h3 className="font-medium text-slate-900">
+                                <div className="min-w-0">
+                                    <p className="truncate font-semibold text-ink">
                                         {sub.name}
-                                    </h3>
-                                    <p className="text-sm text-slate-500">
-                                        Renewal:{" "}
-                                        {new Date(
-                                            sub.due_date
-                                        ).toLocaleDateString("en-US")}{" "}
-                                        • {sub.category || "Other"}
+                                    </p>
+                                    <p className="text-sm text-ink-soft">
+                                        {sub.category || "Other"}
+                                        <span className="md:hidden">
+                                            {" "}· Renews{" "}
+                                            <span className="tabular-nums">
+                                                {new Date(sub.due_date).toLocaleDateString("en-GB")}
+                                            </span>
+                                        </span>
                                     </p>
                                 </div>
-                                <div className="flex items-center space-x-4">
-                                    <p className="font-medium text-slate-900">
-                                        € {sub.price.toFixed(2)}/
-                                        {getFrequency(sub) === "monthly"
-                                            ? "month"
-                                            : "year"}
-                                    </p>
-                                    <div className="flex space-x-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            asChild
+                                <time
+                                    dateTime={sub.due_date}
+                                    className="hidden text-sm text-ink tabular-nums md:block"
+                                >
+                                    {new Date(sub.due_date).toLocaleDateString("en-GB")}
+                                </time>
+                                <span className="order-2 md:order-none">
+                                    <span
+                                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusPill(sub.status)}`}
+                                    >
+                                        {sub.status}
+                                    </span>
+                                </span>
+                                <p className="text-right font-semibold text-ink tabular-nums">
+                                    €{sub.price.toFixed(2)}
+                                    <span className="text-sm font-normal text-ink-soft">
+                                        /{getFrequency(sub) === "monthly" ? "mo" : "yr"}
+                                    </span>
+                                </p>
+                                <div className="order-3 flex justify-end gap-2 md:order-none">
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link
+                                            href={`/subscriptions/${sub.id}`}
+                                            aria-label={`Edit ${sub.name}`}
                                         >
-                                            <Link
-                                                href={`/subscriptions/${sub.id}`}
-                                            >
-                                                Edit
-                                            </Link>
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            className="cursor-pointer"
-                                            onClick={() => handleDelete(sub.id)}
-                                            disabled={isDeleting === sub.id}
-                                        >
-                                            {isDeleting === sub.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Trash2 className="h-4 w-4" />
-                                            )}
-                                        </Button>
-                                    </div>
+                                            Edit
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-leak-deep hover:bg-leak-deep hover:text-paper"
+                                        onClick={() => handleDelete(sub.id)}
+                                        disabled={isDeleting === sub.id}
+                                        aria-label={`Delete ${sub.name}`}
+                                    >
+                                        {isDeleting === sub.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                        )}
+                                    </Button>
                                 </div>
-                            </div>
+                            </li>
                         ))}
-                    </div>
-                ) : (
-                    <div className="p-6 text-center text-slate-500">
-                        You don&apos;t have any subscriptions yet. Add your
-                        first subscription!
-                    </div>
-                )}
-            </Card>
+                    </ul>
+                </div>
+            ) : (
+                <div data-reveal className="rounded-xl bg-paper-2 p-8 sm:p-12">
+                    <p className="font-wide text-2xl font-extrabold tracking-[-0.03em] text-ink">
+                        Nothing tracked yet.
+                    </p>
+                    <p className="mt-2 max-w-md text-ink-soft">
+                        Add the first one. Start with whatever charged you most recently.
+                    </p>
+                    <Button asChild className="mt-6">
+                        <Link href="/subscriptions/new">Add subscription</Link>
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

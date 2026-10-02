@@ -6,8 +6,8 @@ import {
     FormEvent,
     ChangeEvent,
     useCallback,
+    useRef,
 } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,25 @@ import { api } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { usePayment } from "@/hooks/usePayment";
+import { useStaggerReveal } from "@/lib/gsap";
+
+const FIELD =
+    "flex h-11 w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
+const SECTION = "grid gap-6 border-t border-ink/10 py-10 md:grid-cols-[14rem_1fr] md:gap-10";
+const H2 = "font-wide text-xl font-extrabold tracking-[-0.03em] text-ink";
+const CHECKBOX = "mt-0.5 size-5 shrink-0 cursor-pointer accent-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+function Saved() {
+    return (
+        <span
+            role="status"
+            className="inline-flex items-center gap-1.5 rounded-full bg-acid px-2.5 py-0.5 text-xs font-bold text-ink"
+        >
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Saved
+        </span>
+    );
+}
 
 // Interfaces for typing
 interface NotificationSettings {
@@ -60,6 +79,9 @@ export default function SettingsPage() {
     const [notificationSettings, setNotificationSettings] =
         useState<NotificationSettings | null>(null);
     const [error, setError] = useState("");
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useStaggerReveal(rootRef, [isLoading, error]);
 
     // Form states
     const [profileForm, setProfileForm] = useState({
@@ -251,267 +273,242 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-700" />
+            <div ref={rootRef} className="flex h-64 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-ink" aria-label="Loading settings" />
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="p-6 text-center">
-                <h1 className="text-xl font-semibold text-red-600">{error}</h1>
-                <Button className="mt-4" onClick={() => router.refresh()}>
-                    Try Again
-                </Button>
+            <div ref={rootRef} className="max-w-xl space-y-6">
+                <div role="alert" className="rounded-xl border-[1.5px] border-leak-deep bg-leak-deep/5 p-6">
+                    <p className="font-semibold text-leak-deep">Error: {error}</p>
+                </div>
+                <Button onClick={() => router.refresh()}>Try again</Button>
             </div>
         );
     }
 
+    const isPremium = subscriptionStatus?.plan === "premium";
+
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <div ref={rootRef}>
+            <header data-reveal className="pb-10">
+                <p className="eyebrow text-ink-soft">Account</p>
+                <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] text-ink">
+                    Settings
+                </h1>
+            </header>
 
             {/* Profile Settings */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-900">
-                    Profile
-                </h2>
-                <Card className="bg-white shadow-sm p-6 relative">
-                    {showSuccessProfile && (
-                        <div className="absolute top-2 right-2 flex items-center bg-green-100 text-green-600 px-3 py-1 rounded">
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Saved</span>
-                        </div>
-                    )}
-                    <form className="space-y-4" onSubmit={handleProfileSubmit}>
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                value={profileForm.name}
-                                onChange={handleProfileChange}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                value={user?.email || ""}
-                                disabled
-                            />
-                            <p className="text-xs text-slate-500">
-                                Email managed by your login account
-                            </p>
-                        </div>
-                        <div className="pt-2">
-                            <Button
-                                type="submit"
-                                disabled={isSavingProfile}
-                                className="cursor-pointer"
-                            >
-                                {isSavingProfile ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    "Save Changes"
-                                )}
-                            </Button>
-                        </div>
-                    </form>
-                </Card>
-            </div>
+            <section data-reveal aria-labelledby="profile-heading" className={SECTION}>
+                <div>
+                    <h2 id="profile-heading" className={H2}>Profile</h2>
+                    <p className="mt-2 text-sm text-ink-soft">What we call you.</p>
+                </div>
+                <form className="max-w-xl space-y-6" onSubmit={handleProfileSubmit}>
+                    <div className="space-y-2">
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                            id="name"
+                            name="name"
+                            value={profileForm.name}
+                            onChange={handleProfileChange}
+                            autoComplete="name"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                            id="email"
+                            value={user?.email || ""}
+                            aria-describedby="email-hint"
+                            disabled
+                        />
+                        <p id="email-hint" className="text-sm text-ink-soft">
+                            Managed by your login account.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button type="submit" disabled={isSavingProfile}>
+                            {isSavingProfile ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save changes"
+                            )}
+                        </Button>
+                        {showSuccessProfile && <Saved />}
+                    </div>
+                </form>
+            </section>
 
             {/* Notification Settings */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-900">
-                    Notifications
-                </h2>
-                <Card className="bg-white shadow-sm p-6 relative">
-                    {showSuccessNotifications && (
-                        <div className="absolute top-2 right-2 flex items-center bg-green-100 text-green-600 px-3 py-1 rounded">
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Saved</span>
-                        </div>
-                    )}
-                    <form
-                        className="space-y-4"
-                        onSubmit={handleNotificationsSubmit}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-medium text-slate-900">
-                                    Email Notifications
-                                </h3>
-                                <p className="text-sm text-slate-500">
-                                    Receive email reminders before renewals
-                                </p>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="emailEnabled"
-                                    className="h-4 w-4 rounded border-gray-300 text-slate-900 focus:ring-slate-500"
-                                    checked={notificationsForm.emailEnabled}
-                                    onChange={handleNotificationChange}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-medium text-slate-900">
-                                    SMS Notifications
-                                </h3>
-                                <p className="text-sm text-slate-500">
-                                    Receive SMS reminders before renewals
-                                </p>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="smsEnabled"
-                                    className="h-4 w-4 rounded border-gray-300 text-slate-900 focus:ring-slate-500"
-                                    checked={notificationsForm.smsEnabled}
-                                    onChange={handleNotificationChange}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="phoneNumber">
-                                Phone Number (for SMS)
-                            </Label>
-                            <Input
-                                id="phoneNumber"
-                                placeholder="+351 123 456 789"
-                                value={notificationsForm.phoneNumber}
+            <section data-reveal aria-labelledby="notifications-heading" className={SECTION}>
+                <div>
+                    <h2 id="notifications-heading" className={H2}>Reminders</h2>
+                    <p className="mt-2 text-sm text-ink-soft">
+                        A heads-up before anything charges you.
+                    </p>
+                </div>
+                <form className="max-w-xl space-y-6" onSubmit={handleNotificationsSubmit}>
+                    <ul className="divide-y divide-ink/10 border-y border-ink/10">
+                        <li className="flex items-start gap-3 py-4">
+                            <input
+                                type="checkbox"
+                                id="emailEnabled"
+                                aria-describedby="emailEnabled-hint"
+                                className={CHECKBOX}
+                                checked={notificationsForm.emailEnabled}
                                 onChange={handleNotificationChange}
                             />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="daysBeforeRenewal">
-                                Days in Advance for Notifications
-                            </Label>
-                            <select
-                                id="daysBeforeRenewal"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={notificationsForm.daysBeforeRenewal}
+                            <div>
+                                <label htmlFor="emailEnabled" className="cursor-pointer font-semibold text-ink">
+                                    Email reminders
+                                </label>
+                                <p id="emailEnabled-hint" className="text-sm text-ink-soft">
+                                    Get an email before each renewal.
+                                </p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3 py-4">
+                            <input
+                                type="checkbox"
+                                id="smsEnabled"
+                                aria-describedby="smsEnabled-hint"
+                                className={CHECKBOX}
+                                checked={notificationsForm.smsEnabled}
                                 onChange={handleNotificationChange}
-                            >
-                                <option value="1">1 day before</option>
-                                <option value="2">2 days before</option>
-                                <option value="3">3 days before</option>
-                                <option value="5">5 days before</option>
-                                <option value="7">7 days before</option>
-                            </select>
-                        </div>
+                            />
+                            <div>
+                                <label htmlFor="smsEnabled" className="cursor-pointer font-semibold text-ink">
+                                    SMS reminders
+                                </label>
+                                <p id="smsEnabled-hint" className="text-sm text-ink-soft">
+                                    Get a text before each renewal.
+                                </p>
+                            </div>
+                        </li>
+                    </ul>
 
-                        <div className="pt-2">
-                            <Button
-                                type="submit"
-                                disabled={isSavingNotifications}
-                                className="cursor-pointer"
-                            >
-                                {isSavingNotifications ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    "Save Settings"
-                                )}
-                            </Button>
-                        </div>
-                    </form>
-                </Card>
-            </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone number (for SMS)</Label>
+                        <Input
+                            id="phoneNumber"
+                            type="tel"
+                            autoComplete="tel"
+                            placeholder="+351 123 456 789"
+                            className="tabular-nums"
+                            value={notificationsForm.phoneNumber}
+                            onChange={handleNotificationChange}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="daysBeforeRenewal">Remind me</Label>
+                        <select
+                            id="daysBeforeRenewal"
+                            className={FIELD}
+                            value={notificationsForm.daysBeforeRenewal}
+                            onChange={handleNotificationChange}
+                        >
+                            <option value="1">1 day before</option>
+                            <option value="2">2 days before</option>
+                            <option value="3">3 days before</option>
+                            <option value="5">5 days before</option>
+                            <option value="7">7 days before</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Button type="submit" disabled={isSavingNotifications}>
+                            {isSavingNotifications ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save reminders"
+                            )}
+                        </Button>
+                        {showSuccessNotifications && <Saved />}
+                    </div>
+                </form>
+            </section>
 
             {/* Subscription Plan */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-900">
-                    Subscription Plan
-                </h2>
-                <Card className="bg-white shadow-sm p-6">
-                    <div className="space-y-4">
-                        <div>
-                            <h3 className="font-medium text-slate-900">
-                                Current Plan:{" "}
-                                {subscriptionStatus?.plan === "premium"
-                                    ? "Premium"
-                                    : "Free"}
-                            </h3>
-                            {subscriptionStatus?.plan === "premium" &&
-                                subscriptionStatus.premiumUntil && (
-                                    <p className="text-sm text-slate-700 mt-1">
-                                        <span className="font-medium">
-                                            Valid until:
-                                        </span>{" "}
-                                        {new Date(
-                                            subscriptionStatus.premiumUntil
-                                        ).toLocaleDateString()}
-                                    </p>
-                                )}
-                            <p className="text-sm text-slate-500 mt-2">
-                                {subscriptionStatus?.plan !== "premium"
-                                    ? "Limited to 3 subscriptions. Upgrade to premium plan for unlimited features."
-                                    : "You have access to all premium features."}
+            <section data-reveal aria-labelledby="plan-heading" className={SECTION}>
+                <div>
+                    <h2 id="plan-heading" className={H2}>Plan</h2>
+                    <p className="mt-2 text-sm text-ink-soft">What you pay us.</p>
+                </div>
+                <div className="max-w-xl space-y-6">
+                    <div className={`rounded-xl p-6 sm:p-8 ${isPremium ? "bg-acid text-ink" : "bg-ink text-paper"}`}>
+                        <p className={`eyebrow ${isPremium ? "" : "text-paper/70"}`}>Current plan</p>
+                        <p className="display mt-4 text-5xl">{isPremium ? "Premium" : "Free"}</p>
+                        {isPremium && subscriptionStatus?.premiumUntil && (
+                            <p className="mt-4 text-sm font-semibold">
+                                Valid until{" "}
+                                <span className="tabular-nums">
+                                    {new Date(subscriptionStatus.premiumUntil).toLocaleDateString()}
+                                </span>
                             </p>
-                        </div>
-
-                        {subscriptionStatus?.plan !== "premium" ? (
-                            <Button asChild className="cursor-pointer">
+                        )}
+                        <p className={`mt-3 text-sm ${isPremium ? "" : "text-paper/70"}`}>
+                            {isPremium
+                                ? "You have every premium feature."
+                                : "Up to 3 subscriptions. Go Premium for unlimited."}
+                        </p>
+                        {!isPremium && (
+                            <Button asChild variant="acid" className="mt-6">
                                 <a href="/payment">Upgrade to Premium</a>
                             </Button>
-                        ) : (
-                            <div className="space-y-2">
-                                <p className="text-xs text-slate-500">
-                                    You can cancel your Premium plan at any
-                                    time. After cancellation, you will continue
-                                    to have access to premium features until the
-                                    end of the paid period.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
-                                    onClick={async () => {
-                                        if (
-                                            confirm(
-                                                "Are you sure you want to cancel your Premium plan? You will continue to have access to premium features until the end of the paid period."
-                                            )
-                                        ) {
-                                            try {
-                                                await cancelSubscription();
-                                                alert(
-                                                    "Your plan has been successfully canceled!"
-                                                );
-                                                // Update subscription status after cancellation
-                                                await fetchSubscriptionStatus();
-                                                router.refresh();
-                                            } catch (error) {
-                                                console.error(
-                                                    "Error canceling subscription:",
-                                                    error
-                                                );
-                                                alert(
-                                                    "Unable to cancel your subscription. Please try again later."
-                                                );
-                                            }
-                                        }
-                                    }}
-                                >
-                                    Cancel Subscription
-                                </Button>
-                            </div>
                         )}
                     </div>
-                </Card>
-            </div>
+
+                    {isPremium && (
+                        <div className="space-y-3 border-t border-ink/10 pt-6">
+                            <p className="text-sm text-ink-soft">
+                                Cancel any time. You keep Premium until the end of the period you paid for.
+                            </p>
+                            <Button
+                                variant="destructive"
+                                onClick={async () => {
+                                    if (
+                                        confirm(
+                                            "Are you sure you want to cancel your Premium plan? You will continue to have access to premium features until the end of the paid period."
+                                        )
+                                    ) {
+                                        try {
+                                            await cancelSubscription();
+                                            alert(
+                                                "Your plan has been successfully canceled!"
+                                            );
+                                            // Update subscription status after cancellation
+                                            await fetchSubscriptionStatus();
+                                            router.refresh();
+                                        } catch (error) {
+                                            console.error(
+                                                "Error canceling subscription:",
+                                                error
+                                            );
+                                            alert(
+                                                "Unable to cancel your subscription. Please try again later."
+                                            );
+                                        }
+                                    }
+                                }}
+                            >
+                                Cancel plan
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

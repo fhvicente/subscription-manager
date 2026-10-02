@@ -1,251 +1,158 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import Logo from "@/components/Logo";
+import { useAuth } from "@/lib/auth";
+import { gsap, ScrollTrigger, useGSAP, MOTION_OK } from "@/lib/gsap";
+import { cn } from "@/lib/utils";
 
 export default function Header() {
     const { isAuthenticated, logout } = useAuth();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
+    const barRef = useRef<HTMLElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const authed = isAuthenticated();
 
-    // Detects scroll to add shadow to the navbar
-    useEffect(() => {
-        const handleScroll = () => {
-            if (window.scrollY > 10) {
-                setScrolled(true);
-            } else {
-                setScrolled(false);
-            }
-        };
+    useEffect(() => setOpen(false), [pathname]);
 
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+    // Solid pill once scrolled; slide away on scroll down, back on scroll up.
+    useGSAP(() => {
+        const st = ScrollTrigger.create({
+            start: 0,
+            end: "max",
+            onUpdate: (self) => {
+                setScrolled(self.scroll() > 24);
+                if (!window.matchMedia(MOTION_OK).matches) return;
+                gsap.to(barRef.current, {
+                    yPercent: self.direction === 1 && self.scroll() > 400 ? -140 : 0,
+                    duration: 0.6,
+                    overwrite: "auto",
+                });
+            },
+        });
+        return () => st.kill();
+    });
 
-    // Closes the mobile menu when page changes
-    useEffect(() => {
-        setMobileMenuOpen(false);
-    }, [pathname]);
+    useGSAP(
+        () => {
+            if (!open || !window.matchMedia(MOTION_OK).matches) return;
+            gsap.from(".menu-item", { yPercent: 110, stagger: 0.06, duration: 0.9 });
+        },
+        { dependencies: [open], scope: menuRef }
+    );
 
-    const toggleMobileMenu = () => {
-        setMobileMenuOpen(!mobileMenuOpen);
-    };
-
-    const isActive = (path: string) => {
-        if (path.startsWith("#")) return false;
-        return pathname === path;
-    };
+    const links = [
+        { href: "/#features", label: "Features" },
+        { href: "/#how-it-works", label: "How it works" },
+        ...(authed
+            ? [
+                  { href: "/dashboard", label: "Dashboard" },
+                  { href: "/settings", label: "Settings" },
+              ]
+            : [{ href: "/sign-in", label: "Sign in" }]),
+    ];
 
     return (
-        <nav
-            className={`fixed top-0 left-0 right-0 w-full bg-white z-50 transition-all duration-300 ${
-                scrolled ? "shadow-md" : ""
-            }`}
-        >
-            <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-                <Link
-                    href="/"
-                    className="flex items-center justify-center gap-2 text-center text-2xl md:text-2xl font-bold text-slate-900 hover:opacity-80 transition-opacity"
-                >
-                    <Image
-                        src="/images/logo.png"
-                        alt="logo"
-                        width={40}
-                        height={40}
-                    />
-                    {process.env.NEXT_PUBLIC_APP_NAME || "SubTrack"}
-                </Link>
-
-                {/* Desktop menu */}
-                <div className="hidden md:flex items-center space-x-6">
-                    {/* Public options */}
-                    <Link
-                        href="/#features"
-                        className="text-gray-700 hover:text-primary transition"
-                    >
-                        Features
-                    </Link>
-                    <Link
-                        href="/#how-it-works"
-                        className="text-gray-700 hover:text-primary transition"
-                    >
-                        How It Works
-                    </Link>
-
-                    {/* Options for authenticated users */}
-                    {isAuthenticated() ? (
-                        <>
-                            <Link
-                                href="/dashboard"
-                                className={`transition ${
-                                    isActive("/dashboard")
-                                        ? "text-primary font-medium"
-                                        : "text-gray-700 hover:text-primary"
-                                }`}
-                            >
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/settings"
-                                className={`transition ${
-                                    isActive("/settings")
-                                        ? "text-primary font-medium"
-                                        : "text-gray-700 hover:text-primary"
-                                }`}
-                            >
-                                Profile
-                            </Link>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={logout}
-                                className="cursor-pointer"
-                            >
-                                Sign Out
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Link
-                                href="/sign-in"
-                                className={`transition ${
-                                    isActive("/sign-in")
-                                        ? "text-primary font-medium"
-                                        : "text-gray-700 hover:text-primary"
-                                }`}
-                            >
-                                Sign In
-                            </Link>
-                            <Button
-                                asChild
-                                size="sm"
-                                className="bg-primary hover:bg-primary/90"
-                            >
-                                <Link href="/sign-up">Sign Up</Link>
-                            </Button>
-                        </>
+        <>
+            <header
+                ref={barRef}
+                className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-4"
+            >
+                <nav
+                    className={cn(
+                        "mx-auto flex max-w-7xl items-center justify-between rounded-full py-2 pl-4 pr-2 transition-[background-color,border-color] duration-500",
+                        scrolled || open
+                            ? "border border-ink/10 bg-paper"
+                            : "border border-transparent"
                     )}
-                </div>
+                >
+                    <Link href="/" aria-label="SubTrack home" className="text-ink">
+                        <Logo />
+                    </Link>
 
-                {/* Mobile menu button */}
-                <div className="md:hidden">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleMobileMenu}
-                        className="p-2"
-                        aria-label="Menu"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            {mobileMenuOpen ? (
-                                <>
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </>
-                            ) : (
-                                <>
-                                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                                </>
-                            )}
-                        </svg>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Mobile menu */}
-            {mobileMenuOpen && (
-                <div className="md:hidden bg-white shadow-lg border-t">
-                    <div className="flex flex-col space-y-3 px-4 py-3">
-                        {/* Public options */}
-                        <Link
-                            href="/#features"
-                            className="text-gray-700 hover:text-primary transition py-2 px-3 hover:bg-gray-50 rounded"
-                        >
-                            Features
-                        </Link>
-                        <Link
-                            href="/#how-it-works"
-                            className="text-gray-700 hover:text-primary transition py-2 px-3 hover:bg-gray-50 rounded"
-                        >
-                            How It Works
-                        </Link>
-
-                        {/* Options for authenticated users */}
-                        {isAuthenticated() ? (
-                            <>
-                                <Link
-                                    href="/dashboard"
-                                    className={`transition py-2 px-3 hover:bg-gray-50 rounded ${
-                                        isActive("/dashboard")
-                                            ? "text-primary font-medium bg-gray-50"
-                                            : "text-gray-700 hover:text-primary"
-                                    }`}
-                                >
-                                    Dashboard
-                                </Link>
-                                <Link
-                                    href="/settings"
-                                    className={`transition py-2 px-3 hover:bg-gray-50 rounded ${
-                                        isActive("/settings")
-                                            ? "text-primary font-medium bg-gray-50"
-                                            : "text-gray-700 hover:text-primary"
-                                    }`}
-                                >
-                                    Profile
-                                </Link>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        logout();
-                                        setMobileMenuOpen(false);
-                                    }}
-                                    className="w-full justify-center mt-2"
-                                >
-                                    Sign Out
-                                </Button>
-                            </>
+                    <div className="hidden items-center gap-1 md:flex">
+                        {links.map((l) => (
+                            <Link
+                                key={l.href}
+                                href={l.href}
+                                aria-current={pathname === l.href ? "page" : undefined}
+                                className="rounded-full px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/[0.07] aria-[current=page]:bg-ink aria-[current=page]:text-paper"
+                            >
+                                {l.label}
+                            </Link>
+                        ))}
+                        {authed ? (
+                            <Button variant="outline" size="sm" onClick={logout} className="ml-2">
+                                Sign out
+                            </Button>
                         ) : (
-                            <div className="flex flex-col space-y-3 pt-2">
+                            <Button asChild className="ml-2">
+                                <Link href="/sign-up">Start free</Link>
+                            </Button>
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setOpen((o) => !o)}
+                        aria-expanded={open}
+                        aria-controls="mobile-menu"
+                        aria-label={open ? "Close menu" : "Open menu"}
+                        className="relative grid size-11 place-items-center rounded-full bg-ink text-paper md:hidden"
+                    >
+                        <span
+                            className={cn(
+                                "absolute h-[2px] w-5 bg-current transition-transform duration-500 ease-out-expo",
+                                open ? "rotate-45" : "-translate-y-[4px]"
+                            )}
+                        />
+                        <span
+                            className={cn(
+                                "absolute h-[2px] w-5 bg-current transition-transform duration-500 ease-out-expo",
+                                open ? "-rotate-45" : "translate-y-[4px]"
+                            )}
+                        />
+                    </button>
+                </nav>
+            </header>
+
+            {open && (
+                <div
+                    id="mobile-menu"
+                    ref={menuRef}
+                    className="fixed inset-0 z-40 flex flex-col justify-end bg-ink px-5 pb-10 pt-28 text-paper md:hidden"
+                >
+                    <ul className="space-y-1">
+                        {links.map((l) => (
+                            <li key={l.href} className="overflow-hidden">
                                 <Link
-                                    href="/sign-in"
-                                    className={`transition py-2 px-3 hover:bg-gray-50 rounded ${
-                                        isActive("/sign-in")
-                                            ? "text-primary font-medium bg-gray-50"
-                                            : "text-gray-700 hover:text-primary"
-                                    }`}
+                                    href={l.href}
+                                    onClick={() => setOpen(false)}
+                                    className="menu-item display block py-1 text-[clamp(2.75rem,13vw,4.5rem)] hover:text-acid"
                                 >
-                                    Sign In
+                                    {l.label}
                                 </Link>
-                                <Button
-                                    asChild
-                                    size="sm"
-                                    className="bg-primary hover:bg-primary/90 w-full justify-center"
-                                >
-                                    <Link href="/sign-up">Sign Up</Link>
-                                </Button>
-                            </div>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="mt-10">
+                        {authed ? (
+                            <Button variant="acid" size="lg" onClick={logout} className="w-full">
+                                Sign out
+                            </Button>
+                        ) : (
+                            <Button asChild variant="acid" size="lg" className="w-full">
+                                <Link href="/sign-up">Start free</Link>
+                            </Button>
                         )}
                     </div>
                 </div>
             )}
-        </nav>
+        </>
     );
 }

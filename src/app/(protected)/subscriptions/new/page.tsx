@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +8,11 @@ import { Calendar } from "@/components/ui/calendar";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useStaggerReveal } from "@/lib/gsap";
+
+const FIELD =
+    "flex w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
 
 export default function NewSubscriptionPage() {
     const router = useRouter();
@@ -23,6 +26,9 @@ export default function NewSubscriptionPage() {
         dueDate: new Date(),
         status: "active",
     });
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useStaggerReveal(rootRef, [showSuccess]);
 
     const handleChange = (
         e: React.ChangeEvent<
@@ -82,128 +88,136 @@ export default function NewSubscriptionPage() {
 
     if (showSuccess) {
         return (
-            <div className="flex flex-col items-center justify-center space-y-4 p-8">
-                <div className="flex items-center space-x-2 text-green-600">
-                    <CheckCircle2 className="h-8 w-8" />
-                    <h2 className="text-xl font-semibold">
-                        Subscription created successfully!
-                    </h2>
+            <div ref={rootRef} className="max-w-xl">
+                <div
+                    role="status"
+                    className="rounded-xl bg-acid p-8 text-ink"
+                >
+                    <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
+                    <p className="font-wide mt-4 text-2xl font-extrabold tracking-[-0.03em]">
+                        Subscription added.
+                    </p>
+                    <p className="mt-2">Taking you back to your list.</p>
                 </div>
-                <p className="text-slate-600">
-                    Redirecting to subscription list...
-                </p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center">
-                <Link
-                    href="/subscriptions"
-                    className="text-slate-600 hover:text-slate-900 mr-2"
-                >
-                    ← Back
-                </Link>
-                <h1 className="text-2xl font-bold text-slate-900">
-                    Add Subscription
-                </h1>
-            </div>
+        <div ref={rootRef} className="space-y-10">
+            <header
+                data-reveal
+                className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+            >
+                <div>
+                    <p className="eyebrow text-ink-soft">New subscription</p>
+                    <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] text-ink">
+                        Add one more
+                    </h1>
+                </div>
+                <Button asChild variant="ghost" className="self-start sm:self-auto">
+                    <Link href="/subscriptions">
+                        <ArrowLeft aria-hidden="true" />
+                        Back to subscriptions
+                    </Link>
+                </Button>
+            </header>
+            <form
+                data-reveal
+                className="max-w-xl space-y-6"
+                onSubmit={handleSubmit}
+            >
+                <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        placeholder="Netflix, Spotify, gym..."
+                        required
+                    />
+                </div>
 
-            <Card className="bg-white shadow-sm p-6">
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Subscription Name</Label>
-                        <Input
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            placeholder="e.g., Netflix, Spotify, Gym"
+                <div className="space-y-2">
+                    <Label htmlFor="price">Price (€)</Label>
+                    <Input
+                        id="price"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        type="number"
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        className="tabular-nums"
+                        required
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <select
+                        id="category"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        className={`${FIELD} h-11`}
+                    >
+                        <option value="">Select a category</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Music">Music</option>
+                        <option value="Software">Software</option>
+                        <option value="Health">Health</option>
+                        <option value="Education">Education</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <fieldset className="space-y-2">
+                    <legend className="mb-2 text-[13px] leading-none font-semibold">
+                        Renewal date
+                    </legend>
+                    <div className="inline-block rounded-xl border bg-card p-2 tabular-nums">
+                        <Calendar
+                            mode="single"
+                            selected={formData.dueDate}
+                            onSelect={handleDateChange}
                             required
                         />
                     </div>
+                </fieldset>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="price">Price</Label>
-                        <Input
-                            id="price"
-                            name="price"
-                            value={formData.price}
-                            onChange={handleChange}
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            required
-                        />
-                    </div>
+                <div className="space-y-2">
+                    <Label htmlFor="description">
+                        Notes <span className="font-normal text-ink-soft">(optional)</span>
+                    </Label>
+                    <textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        className={`${FIELD} min-h-24 py-2.5`}
+                        placeholder="Shared with family, annual plan, cancel after trial..."
+                    />
+                </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <select
-                            id="category"
-                            name="category"
-                            value={formData.category}
-                            onChange={handleChange}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <option value="">Select a category</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Music">Music</option>
-                            <option value="Software">Software</option>
-                            <option value="Health">Health</option>
-                            <option value="Education">Education</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Renewal Date</Label>
-                        <div className="border rounded-md p-2">
-                            <Calendar
-                                mode="single"
-                                selected={formData.dueDate}
-                                onSelect={handleDateChange}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="description">
-                            Description (optional)
-                        </Label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            value={formData.description}
-                            onChange={handleChange}
-                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Additional notes about this subscription"
-                        />
-                    </div>
-
-                    <div className="pt-4 flex justify-end space-x-2">
-                        <Button variant="outline" asChild>
-                            <Link href="/subscriptions">Cancel</Link>
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="cursor-pointer"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                "Save Subscription"
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </Card>
+                <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-ink/10 bg-paper py-4 sm:flex-row sm:justify-end">
+                    <Button variant="outline" asChild>
+                        <Link href="/subscriptions">Cancel</Link>
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                Saving...
+                            </>
+                        ) : (
+                            "Add subscription"
+                        )}
+                    </Button>
+                </div>
+            </form>
         </div>
     );
 }

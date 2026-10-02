@@ -1,9 +1,11 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import Logo from "@/components/Logo";
+import { useStaggerReveal } from "@/lib/gsap";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePayment } from "@/hooks/usePayment";
 import { useAuth } from "@/lib/auth";
@@ -36,6 +38,8 @@ function PaymentSuccessContent() {
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [verificationCount, setVerificationCount] = useState(0);
     const MAX_VERIFICATIONS = 3;
+    const root = useRef<HTMLDivElement>(null);
+    useStaggerReveal(root, [loading, authError, subscription]);
 
     // Handle interface based on authentication state
     useEffect(() => {
@@ -83,7 +87,7 @@ function PaymentSuccessContent() {
             isRedirecting
         ) {
             console.warn(
-                "Cannot check status: user not authenticated, invalid session, or already redirecting"
+                "Cannot check status: user not authenticated, invalid session, or already redirecting",
             );
             return;
         }
@@ -161,169 +165,195 @@ function PaymentSuccessContent() {
     // If user is not authenticated, show login screen
     if (authError) {
         return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                <Card className="max-w-md w-full bg-white shadow-sm p-8 text-center">
-                    <div className="mb-6">
-                        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg
-                                className="h-8 w-8 text-amber-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                />
-                            </svg>
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900 mb-2">
-                            Verify Your Payment
-                        </h1>
-                        <p className="text-slate-600 mb-6">
-                            To verify your payment status, you need to log in
-                            again. Your payment has already been processed, but
-                            we need to verify its status.
+            <div ref={root} className="min-h-svh bg-paper text-ink">
+                <div className="mx-auto max-w-2xl px-5 py-8 sm:px-8 lg:py-12">
+                    <Link
+                        href="/"
+                        aria-label="SubTrack home"
+                        className="inline-flex w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                    >
+                        <Logo />
+                    </Link>
+                    <div data-reveal className="mt-16">
+                        <p className="eyebrow text-ink-soft">
+                            Payment received
                         </p>
-                        <Button
-                            className="w-full mb-3"
-                            onClick={redirectToLogin}
-                        >
+                        <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)]">
+                            Sign in to confirm it.
+                        </h1>
+                        <p className="mt-4 max-w-lg text-lg leading-relaxed text-ink-soft">
+                            Your payment has already been processed. Log in
+                            again so we can check its status and switch on your
+                            plan.
+                        </p>
+                    </div>
+                    <div data-reveal className="mt-8 space-y-4">
+                        <Button size="lg" onClick={redirectToLogin}>
                             Login to Verify
                         </Button>
-                        <div className="text-xs text-slate-500 mt-4">
-                            Your Session ID: {sessionId}
-                        </div>
+                        <p className="text-xs text-ink-soft">
+                            Your Session ID:{" "}
+                            <span className="break-all tabular-nums">
+                                {sessionId}
+                            </span>
+                        </p>
                     </div>
-                </Card>
+                </div>
             </div>
         );
     }
 
+    const isActive = subscription?.isActive;
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <Card className="max-w-md w-full bg-white shadow-sm p-8 text-center">
-                <div className="mb-6">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                            className="h-8 w-8 text-green-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                            />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-2">
-                        Payment Received!
+        <div ref={root} className="min-h-svh bg-acid text-ink">
+            <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:py-12">
+                <Link
+                    href="/"
+                    aria-label="SubTrack home"
+                    className="inline-flex w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-acid"
+                >
+                    <Logo />
+                </Link>
+
+                <div data-reveal className="mt-16 lg:mt-24">
+                    <p className="eyebrow">Payment received</p>
+                    <h1 className="display mt-4 text-[clamp(3.5rem,13vw,8rem)]">
+                        {isActive ? "You're in." : "Paid. Checking."}
                     </h1>
-                    <p className="text-slate-600">
-                        We have received your payment. We are verifying your
-                        premium plan.
+                    <p className="mt-6 max-w-lg text-lg font-medium leading-snug">
+                        {isActive
+                            ? "Premium is on. Go find the subscriptions you forgot."
+                            : "We have your payment. We are confirming your premium plan with Stripe."}
                     </p>
                 </div>
 
-                {loading ? (
-                    <p className="text-slate-600">
-                        Loading subscription details...
-                    </p>
-                ) : subscription ? (
-                    <div className="bg-slate-50 p-4 rounded-md mb-6 text-left">
-                        <h2 className="font-medium text-slate-900 mb-2">
-                            Subscription Details
-                        </h2>
-                        <p className="text-sm text-slate-600 mb-1">
-                            <span className="font-medium">Plan:</span>{" "}
-                            {subscription.plan === "premium"
-                                ? "Premium"
-                                : "Free"}
+                <div data-reveal className="mt-10 max-w-lg" aria-live="polite">
+                    {loading ? (
+                        <p className="flex items-center gap-2 font-medium">
+                            <Loader2
+                                aria-hidden="true"
+                                className="size-4 animate-spin text-ink"
+                            />
+                            Loading subscription details...
                         </p>
-                        {subscription.premiumUntil && (
-                            <p className="text-sm text-slate-600 mb-1">
-                                <span className="font-medium">
-                                    Valid until:
-                                </span>{" "}
-                                {new Date(
-                                    subscription.premiumUntil
-                                ).toLocaleDateString()}
+                    ) : subscription ? (
+                        <div className="rounded-xl bg-paper p-5 sm:p-6">
+                            <h2 className="eyebrow text-ink-soft">
+                                Subscription Details
+                            </h2>
+                            <dl className="mt-3 divide-y divide-ink/10 text-sm">
+                                <div className="flex justify-between gap-4 py-2.5">
+                                    <dt className="text-ink-soft">Plan</dt>
+                                    <dd className="font-semibold">
+                                        {subscription.plan === "premium"
+                                            ? "Premium"
+                                            : "Free"}
+                                    </dd>
+                                </div>
+                                {subscription.premiumUntil && (
+                                    <div className="flex justify-between gap-4 py-2.5">
+                                        <dt className="text-ink-soft">
+                                            Valid until
+                                        </dt>
+                                        <dd className="font-semibold tabular-nums">
+                                            {new Date(
+                                                subscription.premiumUntil,
+                                            ).toLocaleDateString()}
+                                        </dd>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between gap-4 py-2.5">
+                                    <dt className="text-ink-soft">Status</dt>
+                                    <dd>
+                                        <span
+                                            className={
+                                                subscription.isActive
+                                                    ? "rounded-full bg-acid px-2.5 py-0.5 text-xs font-bold text-ink"
+                                                    : "rounded-full bg-paper-2 px-2.5 py-0.5 text-xs font-bold text-ink-soft"
+                                            }
+                                        >
+                                            {subscription.isActive
+                                                ? "Active"
+                                                : "Inactive"}
+                                        </span>
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {!subscription.isActive && (
+                                <div className="mt-4">
+                                    <p className="text-sm text-ink-soft">
+                                        Your payment has been processed, but the
+                                        premium plan has not been activated yet.
+                                        This may take a few moments.
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-3"
+                                        onClick={fetchSubscriptionStatus}
+                                        disabled={refreshing}
+                                    >
+                                        {refreshing
+                                            ? "Updating..."
+                                            : "Check again"}
+                                    </Button>
+                                </div>
+                            )}
+
+                            {subscription.isActive && (
+                                <div className="mt-4 space-y-1 text-sm text-ink-soft">
+                                    <p className="font-semibold text-ink">
+                                        Your premium subscription is active.
+                                    </p>
+                                    <p>
+                                        You can now use every premium feature.
+                                    </p>
+                                    <p>
+                                        Taking you to the dashboard in a
+                                        moment...
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl bg-paper p-5 sm:p-6">
+                            <p className="text-sm text-ink-soft">
+                                We are waiting for payment confirmation. This
+                                may take a few moments.
                             </p>
-                        )}
-                        <p className="text-sm text-slate-600">
-                            <span className="font-medium">Status:</span>{" "}
-                            {subscription.isActive ? "Active" : "Inactive"}
-                        </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-3"
+                                onClick={fetchSubscriptionStatus}
+                                disabled={refreshing}
+                            >
+                                {refreshing
+                                    ? "Checking..."
+                                    : "Check payment status"}
+                            </Button>
+                        </div>
+                    )}
+                </div>
 
-                        {!subscription.isActive && (
-                            <div className="mt-3">
-                                <p className="text-xs text-amber-700">
-                                    Your payment has been processed, but the
-                                    premium plan has not been activated yet.
-                                    This may take a few moments.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-2 text-xs"
-                                    onClick={fetchSubscriptionStatus}
-                                    disabled={refreshing}
-                                >
-                                    {refreshing ? "Updating..." : "Check again"}
-                                </Button>
-                            </div>
-                        )}
-
-                        {subscription.isActive && (
-                            <div className="mt-3">
-                                <p className="text-sm text-green-600 font-medium mb-2">
-                                    ✓ Your premium subscription is active!
-                                </p>
-                                <p className="text-xs text-slate-600">
-                                    You can now start using all premium
-                                    features.
-                                </p>
-                                <p className="text-xs text-slate-600 mt-2">
-                                    You will be redirected to the dashboard
-                                    automatically...
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="bg-slate-50 p-4 rounded-md mb-6">
-                        <p className="text-amber-600 text-sm">
-                            We are waiting for payment confirmation. This may
-                            take a few moments.
-                        </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3 w-full text-xs"
-                            onClick={fetchSubscriptionStatus}
-                            disabled={refreshing}
-                        >
-                            {refreshing
-                                ? "Checking..."
-                                : "Check payment status"}
-                        </Button>
-                    </div>
-                )}
-
-                <div className="space-y-3">
-                    <Button className="w-full" asChild>
+                <div
+                    data-reveal
+                    className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4"
+                >
+                    <Button
+                        size="lg"
+                        className="hover:bg-paper hover:text-ink"
+                        asChild
+                    >
                         <Link href="/dashboard">Go to Dashboard</Link>
                     </Button>
-                    <Button variant="outline" className="w-full" asChild>
+                    <Button variant="link" className="text-base" asChild>
                         <Link href="/settings">View Settings</Link>
                     </Button>
                 </div>
-            </Card>
+            </div>
         </div>
     );
 }
@@ -331,39 +361,19 @@ function PaymentSuccessContent() {
 // Loading fallback component
 function PaymentLoadingFallback() {
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <Card className="max-w-md w-full bg-white shadow-sm p-8 text-center">
-                <div className="mb-6">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                            className="animate-spin h-8 w-8 text-slate-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                            ></circle>
-                            <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-2">
-                        Loading...
-                    </h1>
-                    <p className="text-slate-600">
-                        We are verifying your payment.
-                    </p>
-                </div>
-            </Card>
+        <div className="flex min-h-svh items-center bg-acid px-5 text-ink sm:px-8">
+            <div className="mx-auto w-full max-w-3xl">
+                <Loader2
+                    aria-hidden="true"
+                    className="size-8 animate-spin text-ink"
+                />
+                <h1 className="display mt-6 text-[clamp(2.25rem,5vw,3.5rem)]">
+                    Loading...
+                </h1>
+                <p className="mt-3 text-lg font-medium">
+                    We are verifying your payment.
+                </p>
+            </div>
         </div>
     );
 }

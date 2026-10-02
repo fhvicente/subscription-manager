@@ -15,11 +15,7 @@ out/
 # production
 build/
 dist/
-data/
 
-# Database
-*.sqlite
-*.sqlite-journal
 
 # misc
 .DS_Store

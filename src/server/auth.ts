@@ -10,12 +10,13 @@ export const signToken = (id: string) =>
 export async function getUser(req: Request) {
     const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
     if (!token) return null;
+    let id: string | undefined;
     try {
-        const { id } = jwt.verify(token, process.env.JWT_SECRET!) as { id?: string };
-        return id ? (await get("SELECT * FROM users WHERE id = ?", [id]) ?? null) : null;
+        ({ id } = jwt.verify(token, process.env.JWT_SECRET!) as { id?: string });
     } catch {
         return null;
     }
+    return id ? ((await get("SELECT * FROM users WHERE id = ?", [id])) ?? null) : null;
 }
 
 export const unauthorized = () =>

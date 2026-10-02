@@ -9,10 +9,6 @@ primary_region = 'mad'
 [build]
   dockerfile = 'Dockerfile'
 
-[[mounts]]
-  source = 'gestor_sub_data'
-  destination = '/app/data'
-
 [http_service]
   internal_port = 8080
   force_https = true

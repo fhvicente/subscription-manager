@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+    /* brand roles */
+    --color-paper: var(--paper);
+    --color-paper-2: var(--paper-2);
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-acid: var(--acid);
+    --color-leak: var(--leak);
+    --color-leak-deep: var(--leak-deep);
+
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --radius-sm: calc(var(--radius) - 6px);
+    --radius-md: calc(var(--radius) - 4px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 8px);
+
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+    --radius: 1rem;
+
+    --paper: oklch(0.968 0.013 100);
+    --paper-2: oklch(0.935 0.018 100);
+    --ink: oklch(0.18 0.022 285);
+    --ink-soft: oklch(0.42 0.02 285);
+    --acid: oklch(0.925 0.215 123);
+    --leak: oklch(0.65 0.235 31);
+    --leak-deep: oklch(0.53 0.21 31);
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: oklch(0.985 0.008 100);
+    --card-foreground: var(--ink);
+    --popover: oklch(0.985 0.008 100);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --secondary: var(--paper-2);
+    --secondary-foreground: var(--ink);
+    --muted: var(--paper-2);
+    --muted-foreground: var(--ink-soft);
+    --accent: var(--acid);
+    --accent-foreground: var(--ink);
+    --destructive: var(--leak-deep);
+    --border: oklch(0.18 0.022 285 / 0.14);
+    --input: oklch(0.18 0.022 285 / 0.22);
+    --ring: var(--ink);
+    --chart-1: var(--ink);
+    --chart-2: var(--leak);
+    --chart-3: oklch(0.72 0.17 123);
+    --chart-4: oklch(0.6 0.14 285);
+    --chart-5: oklch(0.78 0.14 75);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    html {
+        -webkit-font-smoothing: antialiased;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "ss01";
+    }
+    ::selection {
+        background: var(--acid);
+        color: var(--ink);
+    }
+}
+
+/* Wide, heavy display cut of Archivo. */
+@utility font-wide {
+    font-variation-settings: "wdth" 125;
+}
+@utility font-narrow {
+    font-variation-settings: "wdth" 75;
+}
+@utility display {
+    font-variation-settings: "wdth" 125;
+    font-weight: 850;
+    letter-spacing: -0.045em;
+    line-height: 0.88;
+}
+@utility eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+/* SplitText mask wrappers: room for descenders under the tight display leading. */
+.display .word-mask,
+.display .char-mask {
+    padding-block: 0.12em;
+    margin-block: -0.12em;
+}
+
+/* Hide elements GSAP reveals, only when motion is allowed and JS has run. */
+@media (prefers-reduced-motion: no-preference) {
+    .js [data-reveal] {
+        visibility: hidden;
+    }
+}

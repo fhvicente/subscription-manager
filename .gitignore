@@ -15,11 +15,7 @@ out/
 # production
 build/
 dist/
-data/
 
-# Database
-*.sqlite
-*.sqlite-journal
 
 # misc
 .DS_Store
@@ -43,4 +39,5 @@ yarn-error.log*
 .vercel
 
 # typescript
-*.tsbuildinfo 
+*.tsbuildinfo
+next-env.d.ts

@@ -10,7 +10,7 @@ https://api.gestor-assinaturas.com
 
 For local development:
 ```
-http://localhost:3001
+http://localhost:3000
 ```
 
 ## Authentication
@@ -21,7 +21,7 @@ All endpoints (except webhooks) require authentication via JWT token in the Auth
 Authorization: Bearer {your_jwt_token}
 ```
 
-The JWT token is automatically obtained by the frontend through Clerk integration.
+The token is returned by `POST /api/auth/login` and `POST /api/auth/register`.
 
 ---
 
@@ -164,41 +164,6 @@ DELETE /api/subscriptions/:id
 }
 ```
 
-#### Get subscription statistics
-
-```
-GET /api/subscriptions/stats
-```
-
-**Response**
-```json
-{
-  "totalMonthly": 46.97,
-  "totalYearly": 563.64,
-  "totalCount": 3,
-  "categorySummary": [
-    {
-      "category": "Entertainment",
-      "count": 2,
-      "totalAmount": 36.98
-    },
-    {
-      "category": "Music",
-      "count": 1,
-      "totalAmount": 9.99
-    }
-  ],
-  "upcomingRenewals": [
-    {
-      "id": "2",
-      "name": "Spotify",
-      "renewalDate": "2025-04-28T00:00:00.000Z",
-      "amount": 9.99
-    }
-  ]
-}
-```
-
 ### Notifications
 
 #### Get notification settings
@@ -270,33 +235,6 @@ POST /api/notifications/test
 {
   "success": true,
   "message": "Test email notification sent successfully"
-}
-```
-
-#### Check upcoming renewals (for cron)
-
-```
-POST /api/notifications/check-renewals
-```
-
-**Headers**
-```
-x-api-key: your_secure_cron_api_key
-```
-
-**Response**
-```json
-{
-  "success": true,
-  "notificationsSent": 1,
-  "details": [
-    {
-      "subscriptionId": "2",
-      "subscriptionName": "Spotify",
-      "userId": "user_123",
-      "renewalDate": "2025-04-28T00:00:00.000Z"
-    }
-  ]
 }
 ```
 

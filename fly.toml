@@ -11,7 +11,7 @@ primary_region = 'mad'
 
 [[mounts]]
   source = 'gestor_sub_data'
-  destination = '/app/backend/data'
+  destination = '/app/data'
 
 [http_service]
   internal_port = 8080

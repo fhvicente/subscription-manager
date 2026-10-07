@@ -4,44 +4,32 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePayment } from "@/hooks/usePayment";
 import { useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import Logo from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { useStaggerReveal } from "@/lib/gsap";
+import { useDialog } from "@/components/DialogProvider";
+import { FREE_PLAN_LIMIT } from "@/lib/subscription-schema";
 
 export default function PaymentPage() {
     const { createCheckoutSession, loading } = usePayment();
+    const { alert } = useDialog();
     const [processingPlan, setProcessingPlan] = useState<string | null>(null);
     const root = useRef<HTMLDivElement>(null);
     useStaggerReveal(root);
 
+    // ponytail: one Stripe price (STRIPE_MONTHLY_PRICE_ID); the €9,99 shown here must match it.
+    const features: { label: string; free: string | boolean; premium: string | boolean }[] = [
+        { label: "Subscriptions tracked", free: `Up to ${FREE_PLAN_LIMIT}`, premium: "Unlimited" },
+        { label: "Dashboard and spending overview", free: true, premium: true },
+        { label: "Email alerts before renewals", free: false, premium: true },
+        { label: "Calendar sync (Google, Outlook, Apple)", free: false, premium: true },
+        { label: "AI assistant chat", free: false, premium: "Fair-use limit" },
+    ];
+
     const plans = [
-        {
-            id: "monthly",
-            name: "Monthly Plan",
-            price: "€3,99",
-            period: "per month",
-            features: [
-                "Unlimited subscriptions",
-                "Email and SMS notifications",
-                "Detailed reports",
-                "Priority support",
-            ],
-        },
-        {
-            id: "yearly",
-            name: "Annual Plan",
-            price: "€39,99",
-            period: "per year",
-            features: [
-                "Unlimited subscriptions",
-                "Email and SMS notifications",
-                "Detailed reports",
-                "Priority support",
-                "Save 16%",
-            ],
-            recommended: true,
-        },
+        { id: "free", name: "Free", price: "€0", period: "forever", key: "free" as const },
+        { id: "monthly", name: "Premium", price: "€9,99", period: "per month", key: "premium" as const, recommended: true },
     ];
 
     const handleSelectPlan = async (planId: string) => {
@@ -79,11 +67,11 @@ export default function PaymentPage() {
                 <header data-reveal className="mt-12 max-w-2xl lg:mt-16">
                     <p className="eyebrow text-ink-soft">Premium</p>
                     <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)]">
-                        Pick a plan.
+                        One plan. Everything in it.
                     </h1>
                     <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-                        Unlock the premium features and keep every renewal in
-                        check.
+                        Free covers the basics. Premium adds alerts, calendar
+                        sync and the AI assistant.
                     </p>
                 </header>
 
@@ -134,34 +122,46 @@ export default function PaymentPage() {
                                         : "divide-ink/10 border-ink/10",
                                 )}
                             >
-                                {plan.features.map((feature, index) => (
-                                    <li
-                                        key={index}
-                                        className="flex items-center gap-3 py-2.5"
-                                    >
-                                        <Check
-                                            aria-hidden="true"
-                                            className="size-4 shrink-0"
-                                            strokeWidth={3}
-                                        />
-                                        <span>{feature}</span>
-                                    </li>
-                                ))}
+                                {features.map((feature) => {
+                                    const value = feature[plan.key];
+                                    return (
+                                        <li
+                                            key={feature.label}
+                                            className={cn(
+                                                "flex items-center gap-3 py-2.5",
+                                                !value && "opacity-50",
+                                            )}
+                                        >
+                                            {value ? (
+                                                <Check aria-hidden="true" className="size-4 shrink-0" strokeWidth={3} />
+                                            ) : (
+                                                <Minus aria-hidden="true" className="size-4 shrink-0" strokeWidth={3} />
+                                            )}
+                                            <span className="flex-1">
+                                                {feature.label}
+                                                {!value && <span className="sr-only"> (not included)</span>}
+                                            </span>
+                                            {typeof value === "string" && (
+                                                <span className="text-sm font-semibold">{value}</span>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
-                            <Button
-                                size="lg"
-                                className={cn(
-                                    "mt-8 w-full",
-                                    plan.recommended &&
-                                        "hover:bg-paper hover:text-ink",
-                                )}
-                                onClick={() => handleSelectPlan(plan.id)}
-                                disabled={loading || processingPlan !== null}
-                            >
-                                {processingPlan === plan.id
-                                    ? "Processing..."
-                                    : `Select ${plan.name}`}
-                            </Button>
+                            {plan.recommended ? (
+                                <Button
+                                    size="lg"
+                                    className="mt-8 w-full hover:bg-paper hover:text-ink"
+                                    onClick={() => handleSelectPlan(plan.id)}
+                                    disabled={loading || processingPlan !== null}
+                                >
+                                    {processingPlan === plan.id ? "Processing..." : "Go Premium"}
+                                </Button>
+                            ) : (
+                                <p className="mt-8 py-2.5 text-center text-sm text-ink-soft">
+                                    Included with every account
+                                </p>
+                            )}
                         </section>
                     ))}
                 </div>

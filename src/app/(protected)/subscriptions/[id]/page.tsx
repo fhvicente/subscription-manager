@@ -10,6 +10,7 @@ import { api } from "@/lib/auth";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
 import { useStaggerReveal } from "@/lib/gsap";
+import { useDialog } from "@/components/DialogProvider";
 
 const FIELD =
     "flex w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
@@ -29,6 +30,7 @@ interface Subscription {
 
 export default function EditSubscriptionPage() {
     const router = useRouter();
+    const { alert } = useDialog();
     const params = useParams();
     const subscriptionId = params.id as string;
 

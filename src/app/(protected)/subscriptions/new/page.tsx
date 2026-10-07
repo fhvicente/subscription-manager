@@ -1,94 +1,79 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { isAxiosError } from "axios";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
 import { useStaggerReveal } from "@/lib/gsap";
+import { useDialog } from "@/components/DialogProvider";
+import { CATEGORIES, subscriptionFormSchema } from "@/lib/subscription-schema";
 
 const FIELD =
-    "flex w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
+    "flex w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid aria-invalid:border-destructive disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
+
+type FormInput = z.input<typeof subscriptionFormSchema>;
+type FormOutput = z.output<typeof subscriptionFormSchema>;
 
 export default function NewSubscriptionPage() {
     const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { alert, confirm } = useDialog();
     const [showSuccess, setShowSuccess] = useState(false);
-    const [formData, setFormData] = useState({
-        name: "",
-        price: "",
-        category: "",
-        description: "",
-        dueDate: new Date(),
-        status: "active",
+    const form = useForm<FormInput, unknown, FormOutput>({
+        resolver: zodResolver(subscriptionFormSchema),
+        defaultValues: { name: "", price: "", category: "", dueDate: new Date(), description: "" },
     });
+    const isSubmitting = form.formState.isSubmitting;
     const rootRef = useRef<HTMLDivElement>(null);
 
     useStaggerReveal(rootRef, [showSuccess]);
 
-    const handleChange = (
-        e: React.ChangeEvent<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-        >
-    ) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        if (!formData.name || !formData.price || !formData.dueDate) {
-            alert(
-                "Please fill in the required fields: Name, Price, and Renewal Date"
-            );
-            return;
-        }
-
+    const onSubmit = async (values: FormOutput) => {
         try {
-            setIsSubmitting(true);
+            await api.post("/subscriptions", {
+                ...values,
+                dueDate: values.dueDate.toISOString(),
+                status: "active",
+            });
 
-            // Format data for API
-            const subscriptionData = {
-                name: formData.name,
-                price: parseFloat(formData.price),
-                description: formData.description,
-                dueDate: formData.dueDate.toISOString(),
-                category: formData.category || undefined,
-                status: formData.status,
-            };
-
-            console.log("Sending data to API:", subscriptionData); // Log data for debugging
-
-            await api.post("/subscriptions", subscriptionData);
-
-            // Show success message
             setShowSuccess(true);
-
-            // Navigate back to subscriptions list after a delay
             setTimeout(() => {
                 router.push("/subscriptions");
-                router.refresh(); // Refresh to show the new data
+                router.refresh();
             }, 2000);
         } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.code === "FREE_PLAN_LIMIT") {
+                const upgrade = await confirm(
+                    "The free plan tracks up to 3 subscriptions. Go Premium for unlimited.",
+                    { title: "Free plan limit reached", confirmLabel: "See Premium" }
+                );
+                if (upgrade) router.push("/payment");
+                return;
+            }
             console.error("Error creating subscription:", error);
             alert("Unable to create the subscription. Please try again later.");
-        } finally {
-            setIsSubmitting(false);
         }
-    };
-
-    const handleDateChange = (date: Date | undefined) => {
-        setFormData((prev) => ({ ...prev, dueDate: date as Date }));
     };
 
     if (showSuccess) {
         return (
-            <div ref={rootRef} className="max-w-xl">
+            <div ref={rootRef} className="mx-auto max-w-xl">
                 <div
                     role="status"
                     className="rounded-xl bg-acid p-8 text-ink"
@@ -97,110 +82,128 @@ export default function NewSubscriptionPage() {
                     <p className="font-wide mt-4 text-2xl font-extrabold tracking-[-0.03em]">
                         Subscription added.
                     </p>
-                    <p className="mt-2">Taking you back to your list.</p>
+                    <p className="mt-2">You&apos;ll be redirected to your subscriptions page.</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div ref={rootRef} className="space-y-10">
-            <header
-                data-reveal
-                className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
-            >
-                <div>
-                    <p className="eyebrow text-ink-soft">New subscription</p>
-                    <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] text-ink">
-                        Add one more
-                    </h1>
-                </div>
-                <Button asChild variant="ghost" className="self-start sm:self-auto">
+        <div ref={rootRef} className="mx-auto max-w-xl space-y-10">
+            <header data-reveal>
+                <Button asChild variant="ghost" className="-ml-3">
                     <Link href="/subscriptions">
                         <ArrowLeft aria-hidden="true" />
                         Back to subscriptions
                     </Link>
                 </Button>
+                <p className="eyebrow mt-6 text-ink-soft">New subscription</p>
+                <h1 className="display mt-3 text-[clamp(2.25rem,5vw,3.5rem)] text-ink">
+                    Add one more
+                </h1>
             </header>
+            <Form {...form}>
             <form
                 data-reveal
-                className="max-w-xl space-y-6"
-                onSubmit={handleSubmit}
+                className="space-y-6"
+                onSubmit={form.handleSubmit(onSubmit)}
+                noValidate
             >
-                <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="Netflix, Spotify, gym..."
-                        required
-                    />
-                </div>
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Netflix, Spotify, gym..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                <div className="space-y-2">
-                    <Label htmlFor="price">Price (€)</Label>
-                    <Input
-                        id="price"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleChange}
-                        type="number"
-                        step="0.01"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        className="tabular-nums"
-                        required
-                    />
-                </div>
+                <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Price (€)</FormLabel>
+                            <FormControl>
+                                <Input
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    className="tabular-nums"
+                                    {...field}
+                                    // only digits and one . or , with up to 2 decimals
+                                    onChange={(e) => {
+                                        if (/^\d{0,6}([.,]\d{0,2})?$/.test(e.target.value)) field.onChange(e);
+                                    }}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <select
-                        id="category"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleChange}
-                        className={`${FIELD} h-11`}
-                    >
-                        <option value="">Select a category</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Music">Music</option>
-                        <option value="Software">Software</option>
-                        <option value="Health">Health</option>
-                        <option value="Education">Education</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
+                <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <FormControl>
+                                <select className={`${FIELD} h-11`} {...field}>
+                                    <option value="">Select a category</option>
+                                    {CATEGORIES.map((c) => (
+                                        <option key={c} value={c}>
+                                            {c}
+                                        </option>
+                                    ))}
+                                </select>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                <fieldset className="space-y-2">
-                    <legend className="mb-2 text-[13px] leading-none font-semibold">
-                        Renewal date
-                    </legend>
-                    <div className="inline-block rounded-xl border bg-card p-2 tabular-nums">
-                        <Calendar
-                            mode="single"
-                            selected={formData.dueDate}
-                            onSelect={handleDateChange}
-                            required
-                        />
-                    </div>
-                </fieldset>
+                <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Renewal date</FormLabel>
+                            <div className="inline-block w-fit rounded-xl border bg-card p-2 tabular-nums">
+                                <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    required
+                                />
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                <div className="space-y-2">
-                    <Label htmlFor="description">
-                        Notes <span className="font-normal text-ink-soft">(optional)</span>
-                    </Label>
-                    <textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        className={`${FIELD} min-h-24 py-2.5`}
-                        placeholder="Shared with family, annual plan, cancel after trial..."
-                    />
-                </div>
+                <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>
+                                Notes <span className="font-normal text-ink-soft">(optional)</span>
+                            </FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    placeholder="Shared with family, annual plan, cancel after trial..."
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-ink/10 bg-paper py-4 sm:flex-row sm:justify-end">
                     <Button variant="outline" asChild>
@@ -218,6 +221,7 @@ export default function NewSubscriptionPage() {
                     </Button>
                 </div>
             </form>
+            </Form>
         </div>
     );
 }

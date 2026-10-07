@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { usePayment } from "@/hooks/usePayment";
 import { useStaggerReveal } from "@/lib/gsap";
+import { useDialog } from "@/components/DialogProvider";
 
 const FIELD =
     "flex h-11 w-full min-w-0 rounded-md border-[1.5px] border-input bg-card px-3.5 text-base text-ink transition-[border-color,box-shadow] outline-none hover:border-ink/40 focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-acid disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
@@ -65,6 +66,7 @@ interface SubscriptionStatus {
 }
 
 export default function SettingsPage() {
+    const { alert, confirm } = useDialog();
     const router = useRouter();
     const { getSubscriptionStatus, cancelSubscription } = usePayment();
     const [isLoading, setIsLoading] = useState(true);
@@ -479,14 +481,16 @@ export default function SettingsPage() {
                                 variant="destructive"
                                 onClick={async () => {
                                     if (
-                                        confirm(
-                                            "Are you sure you want to cancel your Premium plan? You will continue to have access to premium features until the end of the paid period."
+                                        await confirm(
+                                            "You keep Premium until the end of the period you paid for.",
+                                            { title: "Cancel your Premium plan?", confirmLabel: "Cancel plan", destructive: true }
                                         )
                                     ) {
                                         try {
                                             await cancelSubscription();
-                                            alert(
-                                                "Your plan has been successfully canceled!"
+                                            await alert(
+                                                "Your plan has been cancelled.",
+                                                { title: "Done" }
                                             );
                                             // Update subscription status after cancellation
                                             await fetchSubscriptionStatus();

@@ -1,5 +1,13 @@
 # Feature ideas
 
+## Premium plan (validated, not implemented yet)
+
+Already advertised on `/payment` (€9,99/month, single plan).
+
+- **Email alerts for Premium only.** `checkUpcomingRenewals` (`src/server/email.ts`) emails every user with alerts on; filter it with `isPremiumActive`. Switch the provider from SendGrid to Resend (free tier: 3,000/month, 100/day).
+- **Calendar sync.** Per-user `.ics` feed at a secret URL (`webcal://…/cal/<token>.ics`) that Google, Outlook and Apple subscribe to; one all-day event per renewal. Token is long, random and regenerable. Optional `.ics` attachment on alert emails. No Google/Microsoft OAuth (app verification not worth it). Google refreshes feeds every 12–24h.
+- **AI assistant chat.** The subscription agent below, via 9router/OmniRouter free-tier models, with a per-user usage limit.
+
 ## AI (via 9router/OmniRouter, OpenAI-compatible endpoint)
 
 - **Subscription agent (chat on the dashboard).** Tool calling over the user's own subscriptions: "how much do I spend on streaming?", "pause Netflix". Actions that change data need user confirmation before they run.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const token = request.cookies.get("token")?.value;
     const { pathname } = request.nextUrl;
 
@@ -34,7 +34,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Specify which paths the middleware should run on
+    // Specify which paths the proxy should run on
     matcher: [
         // Apply to all routes except for API routes, static files, etc.
         "/((?!api|_next/static|_next/image|.*\\..*).*)",

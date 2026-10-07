@@ -27,7 +27,7 @@ export async function POST(req: Request) {
             const plan = session.metadata?.plan;
             if (!userId) break;
 
-            const premiumUntil = new Date(Date.now() + (plan === "yearly" ? 365 : 30) * DAY);
+            const premiumUntil = new Date(Date.now() + 30 * DAY);
             await run(`UPDATE users SET plan = ?, "premiumUntil" = ? WHERE id = ?`, [
                 "premium",
                 premiumUntil.toISOString(),

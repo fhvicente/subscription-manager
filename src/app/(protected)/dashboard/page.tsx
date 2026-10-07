@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { api } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
+import { useDialog } from "@/components/DialogProvider";
 import { gsap, useGSAP, useStaggerReveal, MOTION_OK } from "@/lib/gsap";
 
 const money = (n: number) => `€${n.toFixed(2)}`;
@@ -45,6 +46,7 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+    const { alert } = useDialog();
     const [isLoading, setIsLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState<DashboardData>({
         totalSubscriptions: 0,
@@ -162,7 +164,6 @@ export default function Dashboard() {
                 calculateDashboardMetrics(subs);
             } catch (error) {
                 console.error("Error fetching subscriptions:", error);
-                // Use alert instead of toast since toast component might not be available
                 alert(
                     "Unable to load your subscriptions. Please try again later."
                 );
@@ -172,7 +173,7 @@ export default function Dashboard() {
         };
 
         fetchSubscriptions();
-    }, [calculateDashboardMetrics]);
+    }, [calculateDashboardMetrics, alert]);
 
     const { monthlyTotal, totalSubscriptions, upcomingRenewals, categories } =
         dashboardData;
@@ -211,9 +212,13 @@ export default function Dashboard() {
                 aria-label="Spending summary"
                 className="grid gap-4 lg:grid-cols-[1fr_18rem]"
             >
-                <div className="rounded-xl bg-acid p-6 text-ink sm:p-10">
+                <div className="@container min-w-0 rounded-xl bg-acid p-6 text-ink sm:p-10">
                     <p className="eyebrow">You pay every month</p>
-                    <p className="display mt-6 text-[clamp(3.5rem,11vw,8rem)] tabular-nums">
+                    {/* ponytail: font shrinks with the number's length so it never overflows the card */}
+                    <p
+                        className="display mt-6 tabular-nums whitespace-nowrap"
+                        style={{ fontSize: `min(8rem, ${120 / money(monthlyTotal).length}cqi)` }}
+                    >
                         <span ref={totalRef}>{money(monthlyTotal)}</span>
                     </p>
                     <p className="mt-6 text-lg font-semibold">

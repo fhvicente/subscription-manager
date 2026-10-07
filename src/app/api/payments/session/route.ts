@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     if (!stripe) return paymentsDisabled();
 
     const { plan } = await req.json();
-    if (!["monthly", "yearly"].includes(plan)) {
+    if (plan !== "monthly") {
         return Response.json({ message: "Invalid plan type" }, { status: 400 });
     }
 
@@ -28,10 +28,7 @@ export async function POST(req: Request) {
         payment_method_types: ["card"],
         line_items: [
             {
-                price:
-                    plan === "yearly"
-                        ? process.env.STRIPE_YEARLY_PRICE_ID
-                        : process.env.STRIPE_MONTHLY_PRICE_ID,
+                price: process.env.STRIPE_MONTHLY_PRICE_ID,
                 quantity: 1,
             },
         ],

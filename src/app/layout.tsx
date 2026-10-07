@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { ApiProvider } from "@/lib/api";
 import { AnalyticsProvider } from "@/lib/analytics";
+import { DialogProvider } from "@/components/DialogProvider";
 
 const archivo = Archivo({
     subsets: ["latin", "latin-ext"],
@@ -40,7 +41,7 @@ export default function RootLayout({
                             />
                         </head>
                         <body className="font-sans" suppressHydrationWarning>
-                            {children}
+                            <DialogProvider>{children}</DialogProvider>
                         </body>
                     </html>
                 </AnalyticsProvider>

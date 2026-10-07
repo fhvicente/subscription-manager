@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/auth";
 import { Loader2, Trash2 } from "lucide-react";
 import { useStaggerReveal } from "@/lib/gsap";
+import { useDialog } from "@/components/DialogProvider";
 
 // Types
 interface Subscription {
@@ -22,6 +23,7 @@ interface Subscription {
 }
 
 export default function SubscriptionsPage() {
+    const { alert, confirm } = useDialog();
     const [isLoading, setIsLoading] = useState(true);
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function SubscriptionsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [alert]);
 
     // Fetch subscriptions on component mount
     useEffect(() => {
@@ -50,7 +52,13 @@ export default function SubscriptionsPage() {
 
     // Delete subscription
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this subscription?")) {
+        if (
+            !(await confirm("This subscription will be removed from your list.", {
+                title: "Delete subscription?",
+                confirmLabel: "Delete",
+                destructive: true,
+            }))
+        ) {
             return;
         }
 

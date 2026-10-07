@@ -35,6 +35,9 @@ export function useStaggerReveal(
             gsap.matchMedia().add(MOTION_OK, () => {
                 gsap.from(els, { autoAlpha: 0, y: 24, stagger: 0.06, duration: 0.9 });
             });
+            // Revert (unmount, incl. StrictMode's dev remount) drops the tween's
+            // inline styles, so unmark too or the next run skips them and CSS keeps them hidden.
+            return () => els.forEach((el) => el.removeAttribute("data-revealed"));
         },
         { scope, dependencies: deps }
     );

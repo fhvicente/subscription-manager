@@ -48,7 +48,8 @@ Deleted: `src/app/api/auth/{login,register,me,logout}/route.ts`.
 | --- | --- |
 | `getUser(req)` | `auth.api.getSession({ headers: req.headers })`, then `SELECT * FROM users WHERE id = ?`. Same full row as today. |
 | `currentUser()` (new) | Same, using `headers()` from `next/headers`. For server components. Replaces `userFromToken`. |
-| `unauthorized`, `forbidden`, `isAdmin`, `logAdmin`, `clientIp`, `tooManyRequests` | Unchanged, except `unauthorized` no longer touches cookies. |
+| `unauthorized` | Still expires the session cookie, now under both better-auth names (`better-auth.session_token` and `__Secure-better-auth.session_token`). `getSession` called from our routes doesn't clear a stale cookie, so without this the proxy (cookie present) and the API (401) would bounce the user between `/sign-in` and `/dashboard`. |
+| `forbidden`, `isAdmin`, `logAdmin`, `clientIp`, `tooManyRequests` | Unchanged. |
 | `signToken`, `withSession`, `clearSession`, `userFromToken` | Removed. |
 
 `src/app/(protected)/{dashboard,admin}/layout.tsx`: `userFromToken(cookies().get("token"))` becomes `currentUser()`.
@@ -64,7 +65,7 @@ The `schema` in `db.ts` stays idempotent and runs on the first query. Added to i
 - The `session`, `account`, `verification` and `rateLimit` tables, as produced by `npx @better-auth/cli generate` for this config (FKs to `users(id)` with `ON DELETE CASCADE`, so the admin's user delete still works).
 - On `users`: `DROP COLUMN IF EXISTS password`, `ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN NOT NULL DEFAULT false`, `ADD COLUMN IF NOT EXISTS image TEXT`.
 
-This works on an empty database and on the current local or Neon one, with no manual step. Our own `rate_limits` table and `rateLimited()` stay: they back the per-email lockout and the test-email limit.
+This works on an empty database and on the current local or Neon one, with no manual step. better-auth queries the pool directly, not through our `exec()`, so `db.ts` exports `ensureSchema()`. The `[...all]` route and `getUser`/`currentUser` await it before calling better-auth; otherwise a sign-up as the first request after a deploy would hit missing tables. Our own `rate_limits` table and `rateLimited()` stay: they back the per-email lockout and the test-email limit.
 
 ## Client
 
@@ -87,7 +88,7 @@ It still exposes `user, loading, error, login, register, logout, isAuthenticated
   - `req({ token })` sends it as the `cookie` header. `token` keeps its name, so app tests don't change.
   - `reset()` also truncates `session`, `account`, `verification`, `"rateLimit"`.
 - `tests/auth.test.ts` is rewritten against `auth.handler` with real requests to `/api/auth/*`:
-  - The session cookie is HttpOnly and no token appears in the body.
+  - The session cookie is HttpOnly. better-auth's sign-up body does carry a `token`; it can't be used without the cookie signature (no bearer plugin), so it isn't asserted away.
   - Sign-in works. Sign-out revokes the session server-side: the old cookie gets 401 from `getUser`.
   - Passwords under 8 characters and names over 100 are rejected.
   - Duplicate email is rejected.

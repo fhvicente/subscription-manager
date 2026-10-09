@@ -25,7 +25,7 @@ export async function POST(req: Request) {
             const session = event.data.object;
             const userId = session.metadata?.userId;
             const plan = session.metadata?.plan;
-            if (!userId) break;
+            if (!userId || session.payment_status !== "paid") break;
 
             const premiumUntil = new Date(Date.now() + 30 * DAY);
             await run(`UPDATE users SET plan = ?, "premiumUntil" = ? WHERE id = ?`, [
@@ -37,6 +37,18 @@ export async function POST(req: Request) {
                 `INSERT INTO payment_logs (id, user_id, amount, status, "stripeSessionId", plan) VALUES (?, ?, ?, ?, ?, ?)`,
                 [randomUUID(), userId, (session.amount_total ?? 0) / 100, "success", session.id, plan]
             );
+            break;
+        }
+        // Every paid invoice, renewals included, extends premium to the end of the billed period.
+        case "invoice.paid": {
+            const invoice = event.data.object;
+            const periodEnd = invoice.lines.data[0]?.period.end;
+            if (periodEnd) {
+                await run(`UPDATE users SET plan = 'premium', "premiumUntil" = ? WHERE "stripeCustomerId" = ?`, [
+                    new Date(periodEnd * 1000).toISOString(),
+                    String(invoice.customer),
+                ]);
+            }
             break;
         }
         case "invoice.payment_failed": {

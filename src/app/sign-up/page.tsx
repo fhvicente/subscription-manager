@@ -9,6 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStaggerReveal } from "@/lib/gsap";
+import { Eye, EyeOff } from "lucide-react";
+
+// Password input with a show/hide toggle; each instance keeps its own visibility.
+function PasswordInput(props: Omit<React.ComponentProps<"input">, "type">) {
+    const [visible, setVisible] = useState(false);
+    return (
+        <div className="relative">
+            <Input {...props} type={visible ? "text" : "password"} className="pr-11" />
+            <button
+                type="button"
+                onClick={() => setVisible((v) => !v)}
+                aria-label={visible ? "Hide password" : "Show password"}
+                aria-pressed={visible}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md text-ink-soft outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ink"
+            >
+                {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+        </div>
+    );
+}
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -42,7 +62,14 @@ export default function SignUpPage() {
         setIsLoading(true);
         setValidationError("");
 
-        const { name, email, password, confirmPassword } = formData;
+        const { email, password, confirmPassword } = formData;
+        const name = formData.name.trim();
+
+        if (name.length < 2) {
+            setValidationError("Name must be at least 2 characters long");
+            setIsLoading(false);
+            return;
+        }
 
         // Validate passwords match
         if (password !== confirmPassword) {
@@ -122,7 +149,10 @@ export default function SignUpPage() {
                                 name="name"
                                 type="text"
                                 autoComplete="name"
+                                placeholder="Jane Doe"
                                 required
+                                minLength={2}
+                                maxLength={100}
                                 value={formData.name}
                                 onChange={handleChange}
                             />
@@ -135,7 +165,9 @@ export default function SignUpPage() {
                                 name="email"
                                 type="email"
                                 autoComplete="email"
+                                placeholder="you@example.com"
                                 required
+                                maxLength={254}
                                 value={formData.email}
                                 onChange={handleChange}
                             />
@@ -143,12 +175,14 @@ export default function SignUpPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input
+                            <PasswordInput
                                 id="password"
                                 name="password"
-                                type="password"
                                 autoComplete="new-password"
+                                placeholder="●●●●●●●●"
                                 required
+                                minLength={8}
+                                maxLength={72}
                                 aria-describedby="password-hint"
                                 value={formData.password}
                                 onChange={handleChange}
@@ -157,7 +191,7 @@ export default function SignUpPage() {
                                 id="password-hint"
                                 className="text-xs text-ink-soft"
                             >
-                                At least 8 characters.
+                                8 to 72 characters.
                             </p>
                         </div>
 
@@ -165,12 +199,14 @@ export default function SignUpPage() {
                             <Label htmlFor="confirmPassword">
                                 Confirm password
                             </Label>
-                            <Input
+                            <PasswordInput
                                 id="confirmPassword"
                                 name="confirmPassword"
-                                type="password"
                                 autoComplete="new-password"
+                                placeholder="●●●●●●●●"
                                 required
+                                minLength={8}
+                                maxLength={72}
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                             />

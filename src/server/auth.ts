@@ -1,14 +1,28 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { get } from "./db";
 
+const WEEK = 7 * 24 * 60 * 60;
+
 export const signToken = (id: string) =>
     jwt.sign({ id }, process.env.JWT_SECRET!, {
         expiresIn: process.env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
     });
 
-// Returns the user behind the Bearer token, or null if missing/invalid.
+// HttpOnly so page scripts (and any XSS) can't read the token; SameSite=Lax blocks cross-site writes.
+const sessionCookie = (token: string, maxAge: number) =>
+    `token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}` +
+    (process.env.NODE_ENV === "production" ? "; Secure" : "");
+
+// JSON response that logs the user in.
+export const withSession = (body: unknown, userId: string, status = 200) =>
+    Response.json(body, { status, headers: { "Set-Cookie": sessionCookie(signToken(userId), WEEK) } });
+
+export const clearSession = (body: unknown, status = 200) =>
+    Response.json(body, { status, headers: { "Set-Cookie": sessionCookie("", 0) } });
+
+// Returns the user behind the session cookie, or null if missing/invalid.
 export async function getUser(req: Request) {
-    const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
+    const token = req.headers.get("cookie")?.match(/(?:^|;\s*)token=([^;]+)/)?.[1];
     if (!token) return null;
     let id: string | undefined;
     try {
@@ -19,5 +33,21 @@ export async function getUser(req: Request) {
     return id ? ((await get("SELECT * FROM users WHERE id = ?", [id])) ?? null) : null;
 }
 
-export const unauthorized = () =>
-    Response.json({ error: "Invalid or expired token" }, { status: 401 });
+// Also drops the cookie, so a stale token can't bounce the user between the proxy and the sign-in page.
+export const unauthorized = () => clearSession({ error: "Invalid or expired token" }, 401);
+
+// First hop of x-forwarded-for is the client on Vercel (the platform overwrites the header).
+export const clientIp = (req: Request) =>
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+
+export const tooManyRequests = () =>
+    Response.json({ error: "Too many attempts, try again later", message: "Too many attempts, try again later" }, { status: 429 });
+
+// Admins are listed by email in ADMIN_EMAILS (comma-separated, case-insensitive); no role column needed.
+export const isAdmin = (user: { email?: unknown } | null) =>
+    !!user &&
+    (process.env.ADMIN_EMAILS ?? "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+        .includes(String(user.email).toLowerCase());

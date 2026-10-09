@@ -33,7 +33,7 @@ function PaymentSuccessContent() {
     const [authError, setAuthError] = useState(false);
     const { isTokenValid, getSubscriptionStatusBySession } = usePayment();
     const [subscription, setSubscription] = useState<Subscription | null>(null);
-    const { isAuthenticated, refreshUser } = useAuth();
+    const { isAuthenticated, refreshUser, loading: authLoading } = useAuth();
     const [checkedAuth, setCheckedAuth] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [verificationCount, setVerificationCount] = useState(0);
@@ -51,6 +51,9 @@ function PaymentSuccessContent() {
                 return;
             }
 
+            // Wait for /auth/me: the session cookie is HttpOnly, so the user is only known after it answers
+            if (authLoading) return;
+
             // Check user authentication
             const authenticated = isAuthenticated();
             console.log("Authentication state:", authenticated);
@@ -65,7 +68,7 @@ function PaymentSuccessContent() {
         };
 
         checkAuthentication();
-    }, [sessionId, isAuthenticated]);
+    }, [sessionId, isAuthenticated, authLoading]);
 
     // Function to redirect to login with return to this page
     const redirectToLogin = useCallback(() => {

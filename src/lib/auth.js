@@ -1,8 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 
 const API_URL = '/api';
@@ -17,34 +16,20 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const router = useRouter();
 
-  // Check if user is already logged in on mount
+  // The session lives in an HttpOnly cookie that JS can't read, so ask the server who we are.
+  // A 401 just means "logged out": public pages render this provider too.
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = Cookies.get('token');
-      if (token) {
-        try {
-          const userData = await getCurrentUser(token);
-          setUser(userData);
-        } catch (error) {
-          console.error('Error checking auth:', error);
-          Cookies.remove('token');
-          setUser(null);
-          router.push('/sign-in');
-        }
-      }
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
+    axios.get(`${API_URL}/auth/me`)
+      .then((res) => setUser(res.data))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
 
   // Get current user
-  const getCurrentUser = async (token) => {
+  const getCurrentUser = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/me`);
       return response.data;
     } catch (error) {
       throw error;
@@ -59,11 +44,8 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await axios.post(`${API_URL}/auth/register`, userData);
-      const { token, user } = response.data;
-      
-      // Save token to cookie
-      Cookies.set('token', token, { expires: 7 }); // 7 days expiry
-      
+      const { user } = response.data;
+
       // Set user state
       setUser(user);
       
@@ -82,11 +64,8 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await axios.post(`${API_URL}/auth/login`, { email, password });
-      const { token, user } = response.data;
-      
-      // Save token to cookie
-      Cookies.set('token', token, { expires: 7 }); // 7 days expiry
-      
+      const { user } = response.data;
+
       // Set user state
       setUser(user);
       
@@ -100,35 +79,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout user
-  const logout = () => {
-    Cookies.remove('token');
+  const logout = async () => {
+    await axios.post(`${API_URL}/auth/logout`).catch(() => {});
     setUser(null);
     router.push('/sign-in');
   };
 
-  // Check if user is authenticated
-  const isAuthenticated = () => {
-    const token = Cookies.get('token');
-    return !!token; // Simplified check - if there's a token, consider authenticated
-  };
+  // Check if user is authenticated (false while the initial /auth/me is still loading)
+  const isAuthenticated = useCallback(() => !!user, [user]);
 
   // Refresh user data
   const refreshUser = async () => {
-    const token = Cookies.get('token');
-    if (token) {
-      try {
-        const userData = await getCurrentUser(token);
-        setUser(userData);
-        return userData;
-      } catch (error) {
-        console.error('Error refreshing user:', error);
-        if (error.response?.status === 401) {
-          logout();
-        }
-        throw error;
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+      return userData;
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      if (error.response?.status === 401) {
+        logout();
       }
+      throw error;
     }
-    return null;
   };
 
   return (
@@ -158,30 +130,18 @@ export const useAuth = () => {
   return context;
 };
 
-// Create axios instance with auth token
+// Axios instance for protected pages; the session cookie is sent automatically (same origin)
 export const createAuthenticatedApi = () => {
   const api = axios.create({
     baseURL: API_URL
   });
 
-  // Add request interceptor to include auth token
-  api.interceptors.request.use(
-    (config) => {
-      const token = Cookies.get('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
-
   // Add response interceptor to handle 401 errors
   api.interceptors.response.use(
     (response) => response,
     (error) => {
+      // The server already cleared the stale cookie on the 401.
       if (error.response?.status === 401) {
-        Cookies.remove('token');
         window.location.href = '/sign-in';
       }
       return Promise.reject(error);

@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS payment_logs (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL,
+  reset_at TIMESTAMPTZ NOT NULL
+);
 `;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -89,3 +95,17 @@ export const get = async (sql: string, params: Param[] = []) =>
 export const run = async (sql: string, params: Param[] = []) => ({
     changes: (await exec(sql, params)).rowCount ?? 0,
 });
+
+// Fixed-window counter in Postgres, so the limit holds across serverless instances.
+// Returns true once `key` went over `limit` hits inside the window. Expired rows are pruned by the daily cron.
+export async function rateLimited(key: string, limit: number, windowSeconds: number) {
+    const row = await get(
+        `INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, now() + make_interval(secs => ?))
+         ON CONFLICT (key) DO UPDATE SET
+           count = CASE WHEN rate_limits.reset_at < now() THEN 1 ELSE rate_limits.count + 1 END,
+           reset_at = CASE WHEN rate_limits.reset_at < now() THEN excluded.reset_at ELSE rate_limits.reset_at END
+         RETURNING count`,
+        [key, windowSeconds]
+    );
+    return row!.count > limit;
+}

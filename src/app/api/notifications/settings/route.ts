@@ -1,6 +1,20 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { get, run } from "@/server/db";
 import { getUser, unauthorized } from "@/server/auth";
+import { parseBody } from "@/server/validate";
+
+// The settings page sends the toggles as 1/0; booleans are accepted too (stored as 1/0).
+const toggle = z.union([z.boolean(), z.literal(0), z.literal(1)]);
+const settingsSchema = z
+    .object({
+        email_enabled: toggle,
+        sms_enabled: toggle,
+        push_enabled: toggle,
+        days_before_renewal: z.int().min(1).max(30),
+        phone_number: z.string().trim().max(20).regex(/^[+\d\s()-]*$/, "Digits only").nullable(),
+    })
+    .partial();
 
 const settingsOf = (userId: string) =>
     get("SELECT * FROM notification_settings WHERE user_id = ?", [userId]);
@@ -23,9 +37,10 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
     const user = await getUser(req);
     if (!user) return unauthorized();
+    const body = await parseBody(req, settingsSchema);
+    if (body instanceof Response) return body;
     const current = await ensureSettings(user.id);
-    const body = await req.json();
-    const pick = (key: string) => (body[key] !== undefined ? body[key] : current[key]);
+    const pick = (key: keyof typeof body) => (body[key] !== undefined ? body[key] : current[key]);
 
     await run(
         `UPDATE notification_settings

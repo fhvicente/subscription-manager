@@ -22,6 +22,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Tables are created on the first request. `.env.development` already points `DATABASE_URL` at the local container; stop it with `docker compose down` (add `-v` to wipe the data).
 
+### Tests
+
+`npm test` runs the API route handlers against a `subtrack_test` database in the same container (create it once: `docker compose exec db psql -U subtrack -c "CREATE DATABASE subtrack_test"`). Stripe network calls are stubbed; webhooks are signed with a test secret.
+
 ### Environment variables (`.env.local`)
 
 | Variable | Required | Purpose |
@@ -32,6 +36,7 @@ Open [http://localhost:3000](http://localhost:3000). Tables are created on the f
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_MONTHLY_PRICE_ID` (the €9,99/month price) | for payments | Without them the payment routes return 503 |
 | `SENDGRID_API_KEY`, `EMAIL_FROM` | for email | Without them emails are only logged |
 | `CRON_SECRET` | in production | Vercel sends it to `/api/cron/renewals`; without it the route returns 401 |
+| `ADMIN_EMAILS` | no | Comma-separated emails treated as admins (`isAdmin` in `src/server/auth.ts`, `isAdmin` flag on `/api/auth/me`) |
 
 ## API Documentation
 

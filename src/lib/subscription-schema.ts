@@ -21,8 +21,9 @@ export const subscriptionFormSchema = z.object({
     description: z.string().trim().max(500, "Keep notes under 500 characters"),
 });
 
-// Request body of POST /api/subscriptions.
-export const subscriptionCreateSchema = z.object({
+const STATUS = z.enum(["active", "inactive", "cancelled"]);
+
+const subscriptionFields = z.object({
     name: z.string().trim().min(1).max(100),
     price: z
         .number()
@@ -32,5 +33,11 @@ export const subscriptionCreateSchema = z.object({
     dueDate: z.iso.datetime(),
     category: z.enum(CATEGORIES).optional(),
     description: z.string().trim().max(500).optional(),
-    status: z.enum(["active", "inactive", "cancelled"]).default("active"),
+    status: STATUS,
 });
+
+// Request body of POST /api/subscriptions.
+export const subscriptionCreateSchema = subscriptionFields.extend({ status: STATUS.default("active") });
+
+// Request body of PUT /api/subscriptions/:id. No defaults here, or a partial update would reset fields.
+export const subscriptionUpdateSchema = subscriptionFields.partial();

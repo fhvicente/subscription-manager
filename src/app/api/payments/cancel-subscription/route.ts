@@ -15,8 +15,12 @@ export async function POST(req: Request) {
             });
             for (const sub of subs.data) await stripe.subscriptions.cancel(sub.id);
         } catch (error) {
-            // Same as before: still downgrade locally if Stripe fails.
+            // Don't downgrade locally while Stripe keeps billing: the user would pay for a free plan.
             console.error("Error canceling Stripe subscription:", error);
+            return Response.json(
+                { success: false, message: "Could not cancel the subscription, please try again." },
+                { status: 502 }
+            );
         }
     }
 

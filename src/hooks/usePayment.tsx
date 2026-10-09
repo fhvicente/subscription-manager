@@ -1,26 +1,17 @@
 'use client';
 
 import { useApi } from '@/lib/api';
-import { useState, useCallback, useEffect } from 'react';
-import Cookies from 'js-cookie';
+import { useState, useCallback } from 'react';
+import { useAuth } from '@/lib/auth';
 
 // Hook to manage payment and subscription functionality
 export function usePayment() {
   const api = useApi();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isTokenValid, setIsTokenValid] = useState(true);
-
-  // Check if the token is present and valid
-  useEffect(() => {
-    const token = Cookies.get('token');
-    if (!token) {
-      console.warn("Token not found, redirecting to login");
-      setIsTokenValid(false);
-    } else {
-      setIsTokenValid(true);
-    }
-  }, []);
+  // The session cookie is HttpOnly; a loaded user is the client-side sign that it is valid.
+  const { user } = useAuth();
+  const isTokenValid = !!user;
 
   // Function to handle errors (no longer specifically 401)
   const handleApiError = useCallback((err: Error & { response?: { status: number } }) => {

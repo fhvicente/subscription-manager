@@ -1,5 +1,7 @@
 import { get, run } from "@/server/db";
 import { getUser, unauthorized } from "@/server/auth";
+import { parseBody } from "@/server/validate";
+import { subscriptionUpdateSchema } from "@/lib/subscription-schema";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,15 +32,16 @@ export async function PUT(req: Request, { params }: Ctx) {
     const { id } = await params;
     if (!await find(id, user.id)) return notFound();
 
-    const body = await req.json();
-    const fields = Object.entries(columns).filter(([key]) => body[key] !== undefined);
+    const body = await parseBody(req, subscriptionUpdateSchema);
+    if (body instanceof Response) return body;
+    const fields = Object.entries(columns).filter(([key]) => body[key as keyof typeof columns] !== undefined);
     if (!fields.length) {
         return Response.json({ message: "No fields to update" }, { status: 400 });
     }
 
     await run(
         `UPDATE subscriptions SET ${fields.map(([, col]) => `${col} = ?`).join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
-        [...fields.map(([key]) => body[key]), id, user.id]
+        [...fields.map(([key]) => body[key as keyof typeof columns]), id, user.id]
     );
     return Response.json(await find(id, user.id));
 }

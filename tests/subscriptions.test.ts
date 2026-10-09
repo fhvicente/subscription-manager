@@ -45,7 +45,7 @@ describe("POST /api/subscriptions", () => {
     it("400 on a body that is not JSON", async () => {
         const { token } = await signUp();
         const res = await list.POST(
-            new Request("http://test/", { method: "POST", headers: { cookie: `token=${token}` }, body: "{oops" })
+            new Request("http://test/", { method: "POST", headers: { cookie: token }, body: "{oops" })
         );
         expect(res.status).toBe(400);
     });
@@ -60,10 +60,10 @@ describe("POST /api/subscriptions", () => {
 
     it("active premium has no limit; expired premium does", async () => {
         const { token, user } = await signUp();
-        await run(`UPDATE users SET plan = 'premium', "premiumUntil" = ? WHERE id = ?`, [inDays(10), user.id]);
+        await run(`UPDATE "user" SET plan = 'premium', "premiumUntil" = ? WHERE id = ?`, [inDays(10), user.id]);
         for (let i = 0; i <= FREE_PLAN_LIMIT; i++) expect((await create(token)).status).toBe(201);
 
-        await run(`UPDATE users SET "premiumUntil" = ? WHERE id = ?`, [inDays(-1), user.id]);
+        await run(`UPDATE "user" SET "premiumUntil" = ? WHERE id = ?`, [inDays(-1), user.id]);
         expect((await create(token)).status).toBe(403);
     });
 });

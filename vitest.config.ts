@@ -8,8 +8,8 @@ export default defineConfig({
         fileParallelism: false, // files share one database
         env: {
             DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgres://subtrack:subtrack@localhost:5432/subtrack_test",
-            JWT_SECRET: "test-secret",
-            JWT_EXPIRES_IN: "1h",
+            BETTER_AUTH_SECRET: "test-secret-that-is-at-least-32-chars",
+            BETTER_AUTH_URL: "http://localhost:3000",
             STRIPE_SECRET_KEY: "sk_test_dummy",
             STRIPE_WEBHOOK_SECRET: "whsec_test",
             STRIPE_MONTHLY_PRICE_ID: "price_test",

@@ -2,9 +2,16 @@
 
 import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { createAuthClient } from 'better-auth/react';
 import { useRouter } from 'next/navigation';
 
 const API_URL = '/api';
+
+// Same origin, so no baseURL: it talks to /api/auth/* (better-auth).
+const authClient = createAuthClient();
+
+// Our user row (plan, isAdmin, ...), which the better-auth session doesn't carry.
+const fetchProfile = async () => (await axios.get(`${API_URL}/users/profile`)).data;
 
 // Create auth context
 export const AuthContext = createContext();
@@ -19,79 +26,48 @@ export const AuthProvider = ({ children }) => {
   // The session lives in an HttpOnly cookie that JS can't read, so ask the server who we are.
   // A 401 just means "logged out": public pages render this provider too.
   useEffect(() => {
-    axios.get(`${API_URL}/auth/me`)
-      .then((res) => setUser(res.data))
+    fetchProfile()
+      .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
-  // Get current user
-  const getCurrentUser = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_URL}/auth/me`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Register user
-  const register = async (userData) => {
+  // better-auth answers { data, error } instead of throwing; map both to what the pages expect.
+  const authenticate = async (call, fallback) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.post(`${API_URL}/auth/register`, userData);
-      const { user } = response.data;
-
-      // Set user state
+      const { error } = await call();
+      if (error) throw new Error(error.message || fallback);
+      const user = await fetchProfile();
       setUser(user);
-      
       return { success: true, user };
-    } catch (error) {
-      setError(error.response?.data?.error || 'Registration failed');
-      return { success: false, error: error.response?.data?.error || 'Registration failed' };
+    } catch (e) {
+      const message = e.message || fallback;
+      setError(message);
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }
   };
 
-  // Login user
-  const login = async (email, password) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
-      const { user } = response.data;
+  const register = (userData) => authenticate(() => authClient.signUp.email(userData), 'Registration failed');
 
-      // Set user state
-      setUser(user);
-      
-      return { success: true, user };
-    } catch (error) {
-      setError(error.response?.data?.error || 'Login failed');
-      return { success: false, error: error.response?.data?.error || 'Login failed' };
-    } finally {
-      setLoading(false);
-    }
-  };
+  const login = (email, password) => authenticate(() => authClient.signIn.email({ email, password }), 'Login failed');
 
-  // Logout user
   const logout = async () => {
-    await axios.post(`${API_URL}/auth/logout`).catch(() => {});
+    await authClient.signOut().catch(() => {});
     setUser(null);
     router.push('/sign-in');
   };
 
-  // Check if user is authenticated (false while the initial /auth/me is still loading)
+  // Check if user is authenticated (false while the initial profile load is still loading)
   const isAuthenticated = useCallback(() => !!user, [user]);
 
   // Refresh user data
   const refreshUser = async () => {
     try {
-      const userData = await getCurrentUser();
+      const userData = await fetchProfile();
       setUser(userData);
       return userData;
     } catch (error) {

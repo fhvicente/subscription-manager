@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 export function proxy(request: NextRequest) {
-    const token = request.cookies.get("token")?.value;
+    // Presence check only (handles the __Secure- prefix too); API routes validate the session.
+    const token = getSessionCookie(request);
     const { pathname } = request.nextUrl;
 
     // Define public routes that don't require authentication

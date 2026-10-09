@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as profile from "@/app/api/users/profile/route";
 import * as settings from "@/app/api/notifications/settings/route";
 import * as notifTest from "@/app/api/notifications/test/route";
@@ -17,6 +17,18 @@ describe("/api/users/profile", () => {
         const body = await (await profile.GET(req("GET", { token }))).json();
         expect(body).toMatchObject({ email, name: "Ana", plan: "free" });
         expect(body.password).toBeUndefined();
+    });
+
+    it("tells the client whether the user is an admin (ADMIN_EMAILS, case-insensitive)", async () => {
+        vi.stubEnv("ADMIN_EMAILS", " other@test.dev , Boss@Test.dev");
+        try {
+            const boss = await signUp("boss@test.dev");
+            const ana = await signUp("ana@test.dev");
+            expect((await (await profile.GET(req("GET", { token: boss.token }))).json()).isAdmin).toBe(true);
+            expect((await (await profile.GET(req("GET", { token: ana.token }))).json()).isAdmin).toBe(false);
+        } finally {
+            vi.unstubAllEnvs();
+        }
     });
 
     it("PUT updates the name", async () => {

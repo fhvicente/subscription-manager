@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { get, run } from "@/server/db";
-import { getUser, unauthorized } from "@/server/auth";
+import { getUser, isAdmin, unauthorized } from "@/server/auth";
 import { parseBody } from "@/server/validate";
 
 const profile = (id: string) =>
@@ -9,7 +9,7 @@ const profile = (id: string) =>
 export async function GET(req: Request) {
     const user = await getUser(req);
     if (!user) return unauthorized();
-    return Response.json(await profile(user.id));
+    return Response.json({ ...(await profile(user.id)), isAdmin: isAdmin(user) });
 }
 
 export async function PUT(req: Request) {

@@ -182,7 +182,7 @@ export default function SignUpPage() {
                                 placeholder="●●●●●●●●"
                                 required
                                 minLength={8}
-                                maxLength={72}
+                                maxLength={128}
                                 aria-describedby="password-hint"
                                 value={formData.password}
                                 onChange={handleChange}
@@ -191,7 +191,7 @@ export default function SignUpPage() {
                                 id="password-hint"
                                 className="text-xs text-ink-soft"
                             >
-                                8 to 72 characters.
+                                8 to 128 characters.
                             </p>
                         </div>
 
@@ -206,7 +206,7 @@ export default function SignUpPage() {
                                 placeholder="●●●●●●●●"
                                 required
                                 minLength={8}
-                                maxLength={72}
+                                maxLength={128}
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                             />

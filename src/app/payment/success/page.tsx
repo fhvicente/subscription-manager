@@ -51,7 +51,7 @@ function PaymentSuccessContent() {
                 return;
             }
 
-            // Wait for /auth/me: the session cookie is HttpOnly, so the user is only known after it answers
+            // Wait for /users/profile: the session cookie is HttpOnly, so the user is only known after it answers
             if (authLoading) return;
 
             // Check user authentication

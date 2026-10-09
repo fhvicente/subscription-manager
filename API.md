@@ -318,9 +318,9 @@ GET /api/users/profile
   "email": "user@example.com",
   "name": "Example User",
   "plan": "premium",
-  "premiumUntil": "2025-05-15T16:00:00.000Z",
-  "createdAt": "2025-04-01T12:00:00.000Z",
-  "updatedAt": "2025-04-15T16:00:00.000Z"
+  "created_at": "2025-04-01T12:00:00.000Z",
+  "updated_at": "2025-04-15T16:00:00.000Z",
+  "isAdmin": false
 }
 ```
 
@@ -344,16 +344,15 @@ PUT /api/users/profile
   "email": "user@example.com",
   "name": "New User Name",
   "plan": "premium",
-  "premiumUntil": "2025-05-15T16:00:00.000Z",
-  "createdAt": "2025-04-01T12:00:00.000Z",
-  "updatedAt": "2025-04-16T15:20:00.000Z"
+  "created_at": "2025-04-01T12:00:00.000Z",
+  "updated_at": "2025-04-16T15:20:00.000Z"
 }
 ```
 
 ## Error Codes
 
 - `400 Bad Request` - Invalid request or missing parameters
-- `401 Unauthorized` - Authentication required or invalid token
+- `401 Unauthorized` - Authentication required or invalid or expired session
 - `403 Forbidden` - Permission denied for the resource
 - `404 Not Found` - Resource not found
 - `500 Internal Server Error` - Internal server error

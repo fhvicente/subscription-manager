@@ -19,6 +19,8 @@ export const auth = betterAuth({
             stripeCustomerId: { type: "string", required: false, input: false },
         },
     },
+    // ponytail: better-auth only trusts a single-value x-forwarded-for (fine on Vercel, which overwrites it).
+    // Behind an extra proxy/CDN the header has several hops and all clients share one bucket; then set advanced.ipAddress (ipAddressHeaders / trusted proxies).
     rateLimit: {
         enabled: process.env.NODE_ENV !== "development",
         storage: "database", // shared by all serverless instances

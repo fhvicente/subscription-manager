@@ -16,9 +16,9 @@ export async function GET(req: Request) {
     const status = ["success", "failed"].includes(params.get("status") ?? "") ? params.get("status") : null;
     const [users, subs, payments, categories, list, recentPayments] = await Promise.all([
         get(`SELECT count(*)::int AS total,
-                    count(*) FILTER (WHERE ${LAST_30})::int AS new30,
+                    count(*) FILTER (WHERE "createdAt" > now() - interval '30 days')::int AS new30,
                     count(*) FILTER (WHERE ${PREMIUM_ACTIVE})::int AS premium
-             FROM users`),
+             FROM "user"`),
         get(`SELECT count(*)::int AS total,
                     count(DISTINCT user_id)::int AS users,
                     coalesce(sum(price) FILTER (WHERE status = 'active'), 0)::float AS "activeValue"
@@ -30,12 +30,12 @@ export async function GET(req: Request) {
         query(`SELECT coalesce(nullif(category, ''), 'Other') AS name, count(*)::int AS count
                FROM subscriptions GROUP BY 1 ORDER BY 2 DESC LIMIT 5`),
         // ponytail: capped at 100 rows, add pagination when the search box stops being enough.
-        query(`SELECT u.id, u.email, u.name, u.plan, u."premiumUntil", u.created_at,
+        query(`SELECT u.id, u.email, u.name, u.plan, u."premiumUntil", u."createdAt" AS created_at,
                       (SELECT count(*)::int FROM subscriptions s WHERE s.user_id = u.id) AS subscriptions
-               FROM users u WHERE u.email ILIKE ? OR u.name ILIKE ?
-               ORDER BY u.created_at DESC LIMIT 100`, [q, q]),
+               FROM "user" u WHERE u.email ILIKE ? OR u.name ILIKE ?
+               ORDER BY u."createdAt" DESC LIMIT 100`, [q, q]),
         query(`SELECT p.id, p.amount, p.status, p.plan, p.created_at, u.email
-               FROM payment_logs p JOIN users u ON u.id = p.user_id
+               FROM payment_logs p JOIN "user" u ON u.id = p.user_id
                WHERE ?::text IS NULL OR p.status = ?
                ORDER BY p.created_at DESC LIMIT 50`, [status, status]),
     ]);

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
             if (!userId || session.payment_status !== "paid") break;
 
             const premiumUntil = new Date(Date.now() + 30 * DAY);
-            await run(`UPDATE users SET plan = ?, "premiumUntil" = ? WHERE id = ?`, [
+            await run(`UPDATE "user" SET plan = ?, "premiumUntil" = ? WHERE id = ?`, [
                 "premium",
                 premiumUntil.toISOString(),
                 userId,
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
             const invoice = event.data.object;
             const periodEnd = invoice.lines.data[0]?.period.end;
             if (periodEnd) {
-                await run(`UPDATE users SET plan = 'premium', "premiumUntil" = ? WHERE "stripeCustomerId" = ?`, [
+                await run(`UPDATE "user" SET plan = 'premium', "premiumUntil" = ? WHERE "stripeCustomerId" = ?`, [
                     new Date(periodEnd * 1000).toISOString(),
                     String(invoice.customer),
                 ]);
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         }
         case "invoice.payment_failed": {
             const invoice = event.data.object;
-            const user = await get(`SELECT id FROM users WHERE "stripeCustomerId" = ?`, [String(invoice.customer)]);
+            const user = await get(`SELECT id FROM "user" WHERE "stripeCustomerId" = ?`, [String(invoice.customer)]);
             if (user) {
                 await run(
                     `INSERT INTO payment_logs (id, user_id, amount, status, "stripeSessionId") VALUES (?, ?, ?, ?, ?)`,
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
             break;
         }
         case "customer.subscription.deleted": {
-            await run(`UPDATE users SET plan = 'free', "premiumUntil" = NULL WHERE "stripeCustomerId" = ?`, [
+            await run(`UPDATE "user" SET plan = 'free', "premiumUntil" = NULL WHERE "stripeCustomerId" = ?`, [
                 String(event.data.object.customer),
             ]);
             break;

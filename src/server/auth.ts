@@ -1,43 +1,27 @@
-import jwt, { type SignOptions } from "jsonwebtoken";
-import { get } from "./db";
+import { headers } from "next/headers";
+import { auth } from "./better-auth";
+import { ensureSchema, get } from "./db";
 
-const WEEK = 7 * 24 * 60 * 60;
-
-export const signToken = (id: string) =>
-    jwt.sign({ id }, process.env.JWT_SECRET!, {
-        expiresIn: process.env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
-    });
-
-// HttpOnly so page scripts (and any XSS) can't read the token; SameSite=Lax blocks cross-site writes.
-const sessionCookie = (token: string, maxAge: number) =>
-    `token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}` +
-    (process.env.NODE_ENV === "production" ? "; Secure" : "");
-
-// JSON response that logs the user in.
-export const withSession = (body: unknown, userId: string, status = 200) =>
-    Response.json(body, { status, headers: { "Set-Cookie": sessionCookie(signToken(userId), WEEK) } });
-
-export const clearSession = (body: unknown, status = 200) =>
-    Response.json(body, { status, headers: { "Set-Cookie": sessionCookie("", 0) } });
-
-// Returns the user behind the session cookie, or null if missing/invalid.
-export const getUser = (req: Request) =>
-    userFromToken(req.headers.get("cookie")?.match(/(?:^|;\s*)token=([^;]+)/)?.[1]);
-
-// For server components, which read the cookie via `cookies()` instead of a Request.
-export async function userFromToken(token: string | undefined) {
-    if (!token) return null;
-    let id: string | undefined;
-    try {
-        ({ id } = jwt.verify(token, process.env.JWT_SECRET!) as { id?: string });
-    } catch {
-        return null;
-    }
-    return id ? ((await get("SELECT * FROM users WHERE id = ?", [id])) ?? null) : null;
+// The full "user" row (plan, premiumUntil, stripeCustomerId, ...) behind the session cookie, or null.
+async function userFrom(h: Headers) {
+    await ensureSchema();
+    const session = await auth.api.getSession({ headers: h });
+    return session ? ((await get(`SELECT * FROM "user" WHERE id = ?`, [session.user.id])) ?? null) : null;
 }
 
-// Also drops the cookie, so a stale token can't bounce the user between the proxy and the sign-in page.
-export const unauthorized = () => clearSession({ error: "Invalid or expired token" }, 401);
+export const getUser = (req: Request) => userFrom(req.headers);
+
+// For server components, which have no Request.
+export const currentUser = async () => userFrom(await headers());
+
+// Also expires the session cookie (both names better-auth uses: plain, and __Secure- over https),
+// so a stale cookie can't bounce the user between the proxy and the sign-in page.
+export function unauthorized() {
+    const h = new Headers();
+    h.append("Set-Cookie", "better-auth.session_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+    h.append("Set-Cookie", "__Secure-better-auth.session_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure");
+    return Response.json({ error: "Invalid or expired session" }, { status: 401, headers: h });
+}
 
 // First hop of x-forwarded-for is the client on Vercel (the platform overwrites the header).
 export const clientIp = (req: Request) =>

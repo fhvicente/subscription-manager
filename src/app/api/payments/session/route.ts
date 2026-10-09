@@ -20,7 +20,7 @@ export async function POST(req: Request) {
             metadata: { userId: user.id },
         });
         customerId = customer.id;
-        await run(`UPDATE users SET "stripeCustomerId" = ? WHERE id = ?`, [customerId, user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = ? WHERE id = ?`, [customerId, user.id]);
     }
 
     const session = await stripe.checkout.sessions.create({

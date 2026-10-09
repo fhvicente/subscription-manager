@@ -76,7 +76,7 @@ export async function checkUpcomingRenewals() {
     const subs = await query(
         `SELECT s.*, u.name AS "userName", u.email AS "userEmail", ns.days_before_renewal
          FROM subscriptions s
-         JOIN users u ON s.user_id = u.id
+         JOIN "user" u ON s.user_id = u.id
          JOIN notification_settings ns ON ns.user_id = u.id
          WHERE s.status = 'active' AND ns.email_enabled = 1`
     );

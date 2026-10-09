@@ -22,7 +22,7 @@ describe("/api/admin", () => {
     it("returns KPIs and searchable users", async () => {
         const { token } = await signUp("boss@test.dev");
         const { user } = await signUp("ana@test.dev");
-        await run(`UPDATE users SET plan = 'premium', "premiumUntil" = now() + interval '1 day' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET plan = 'premium', "premiumUntil" = now() + interval '1 day' WHERE id = ?`, [user.id]);
         await run(`INSERT INTO subscriptions (id, user_id, name, due_date, price, category) VALUES ('s1', ?, 'Netflix', now(), 10, 'Streaming')`, [user.id]);
         await run(`INSERT INTO payment_logs (id, user_id, amount, status) VALUES ('p1', ?, 4.99, 'success'), ('p2', ?, 4.99, 'failed')`, [user.id, user.id]);
 
@@ -45,12 +45,12 @@ describe("/api/admin", () => {
         const { user } = await signUp();
         const res = await adminUser.PATCH(req("PATCH", { token, body: { plan: "premium" } }), ctx(user.id));
         expect(res.status).toBe(200);
-        const row = await get(`SELECT plan, "premiumUntil" FROM users WHERE id = ?`, [user.id]);
+        const row = await get(`SELECT plan, "premiumUntil" FROM "user" WHERE id = ?`, [user.id]);
         expect(row!.plan).toBe("premium");
         expect(new Date(row!.premiumUntil).getTime()).toBeGreaterThan(Date.now() + 29 * 86_400_000);
 
         await adminUser.PATCH(req("PATCH", { token, body: { plan: "free" } }), ctx(user.id));
-        expect(await get(`SELECT plan, "premiumUntil" FROM users WHERE id = ?`, [user.id])).toEqual({ plan: "free", premiumUntil: null });
+        expect(await get(`SELECT plan, "premiumUntil" FROM "user" WHERE id = ?`, [user.id])).toEqual({ plan: "free", premiumUntil: null });
 
         expect((await adminUser.PATCH(req("PATCH", { token, body: { plan: "gold" } }), ctx(user.id))).status).toBe(400);
         expect((await adminUser.PATCH(req("PATCH", { token, body: { plan: "free" } }), ctx("nope"))).status).toBe(404);
@@ -61,7 +61,7 @@ describe("/api/admin", () => {
         const { user } = await signUp();
         expect((await adminUser.DELETE(req("DELETE", { token }), ctx(me.id))).status).toBe(400);
         expect((await adminUser.DELETE(req("DELETE", { token }), ctx(user.id))).status).toBe(200);
-        expect(await get("SELECT id FROM users WHERE id = ?", [user.id])).toBeUndefined();
+        expect(await get(`SELECT id FROM "user" WHERE id = ?`, [user.id])).toBeUndefined();
         expect((await adminUser.DELETE(req("DELETE", { token }), ctx(user.id))).status).toBe(404);
     });
 
@@ -95,7 +95,7 @@ describe("/api/admin", () => {
         const { user, token: userToken } = await signUp();
         expect((await renewals.POST(req("POST", { token: userToken }))).status).toBe(403);
         await run(`INSERT INTO notification_settings (id, user_id) VALUES ('n1', ?) ON CONFLICT (user_id) DO NOTHING`, [user.id]);
-        const days = (await get("SELECT days_before_renewal FROM notification_settings WHERE user_id = ?", [user.id]))!.days_before_renewal;
+        const days = (await get(`SELECT days_before_renewal FROM notification_settings WHERE user_id = ?`, [user.id]))!.days_before_renewal;
         await run(`INSERT INTO subscriptions (id, user_id, name, due_date, price) VALUES ('s1', ?, 'Netflix', ?, 10)`, [user.id, inDays(days - 0.5)]);
 
         const res = await renewals.POST(req("POST", { token }));

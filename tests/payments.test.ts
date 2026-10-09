@@ -50,7 +50,7 @@ describe("POST /api/payments/session", () => {
         }
 
         expect(createCustomer).toHaveBeenCalledTimes(1);
-        expect((await get(`SELECT "stripeCustomerId" FROM users WHERE id = ?`, [user.id]))!.stripeCustomerId).toBe("cus_1");
+        expect((await get(`SELECT "stripeCustomerId" FROM "user" WHERE id = ?`, [user.id]))!.stripeCustomerId).toBe("cus_1");
         const params = createSession.mock.calls[0][0] as Stripe.Checkout.SessionCreateParams;
         expect(params).toMatchObject({
             customer: "cus_1",
@@ -70,7 +70,7 @@ describe("POST /api/payments/webhook", () => {
             body: JSON.stringify({ type: "checkout.session.completed", data: { object: { metadata: { userId: user.id } } } }),
         });
         expect((await webhook.POST(forged)).status).toBe(400);
-        expect((await get("SELECT plan FROM users WHERE id = ?", [user.id]))!.plan).toBe("free");
+        expect((await get(`SELECT plan FROM "user" WHERE id = ?`, [user.id]))!.plan).toBe("free");
     });
 
     it("checkout.session.completed makes the user premium for ~30 days and logs the payment", async () => {
@@ -100,25 +100,25 @@ describe("POST /api/payments/webhook", () => {
     it("ignores a checkout session that isn't paid", async () => {
         const { user } = await signUp();
         await webhook.POST(stripeEvent("checkout.session.completed", { id: "cs_unpaid", payment_status: "unpaid", metadata: { userId: user.id } }));
-        expect((await get("SELECT plan FROM users WHERE id = ?", [user.id]))!.plan).toBe("free");
+        expect((await get(`SELECT plan FROM "user" WHERE id = ?`, [user.id]))!.plan).toBe("free");
     });
 
     it("invoice.paid extends premium to the end of the billed period (renewals)", async () => {
         const { user } = await signUp();
-        await run(`UPDATE users SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
         const end = Math.floor(Date.now() / 1000) + 60 * 86_400;
         const res = await webhook.POST(
             stripeEvent("invoice.paid", { id: "in_1", customer: "cus_1", lines: { data: [{ period: { start: 0, end } }] } })
         );
         expect(res.status).toBe(200);
-        const row = (await get(`SELECT plan, "premiumUntil" FROM users WHERE id = ?`, [user.id]))!;
+        const row = (await get(`SELECT plan, "premiumUntil" FROM "user" WHERE id = ?`, [user.id]))!;
         expect(row.plan).toBe("premium");
         expect(new Date(row.premiumUntil).getTime()).toBe(end * 1000);
     });
 
     it("invoice.payment_failed logs a failed payment for the customer", async () => {
         const { user, token } = await signUp();
-        await run(`UPDATE users SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
         await webhook.POST(stripeEvent("invoice.payment_failed", { id: "in_1", customer: "cus_1", amount_due: 999 }));
         const logs = await (await history.GET(req("GET", { token }))).json();
         expect(logs[0]).toMatchObject({ status: "failed", amount: 9.99 });
@@ -126,7 +126,7 @@ describe("POST /api/payments/webhook", () => {
 
     it("customer.subscription.deleted downgrades the user", async () => {
         const { user, token } = await signUp();
-        await run(`UPDATE users SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
         await completeCheckout(user.id);
         await webhook.POST(stripeEvent("customer.subscription.deleted", { id: "sub_1", customer: "cus_1" }));
         expect(await (await status.GET(req("GET", { token }))).json()).toMatchObject({
@@ -160,7 +160,7 @@ describe("GET /api/payments/status/session", () => {
 describe("POST /api/payments/cancel-subscription", () => {
     it("cancels active Stripe subscriptions, downgrades and logs it", async () => {
         const { user, token } = await signUp();
-        await run(`UPDATE users SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
         await completeCheckout(user.id);
         vi.spyOn(stripe.subscriptions, "list").mockResolvedValue({ data: [{ id: "sub_1" }] } as never);
         const cancelSub = vi.spyOn(stripe.subscriptions, "cancel").mockResolvedValue({} as never);
@@ -174,7 +174,7 @@ describe("POST /api/payments/cancel-subscription", () => {
 
     it("keeps premium and answers 502 when Stripe fails, so the user isn't billed for a free plan", async () => {
         const { user, token } = await signUp();
-        await run(`UPDATE users SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
+        await run(`UPDATE "user" SET "stripeCustomerId" = 'cus_1' WHERE id = ?`, [user.id]);
         await completeCheckout(user.id);
         vi.spyOn(console, "error").mockImplementation(() => {});
         vi.spyOn(stripe.subscriptions, "list").mockRejectedValue(new Error("stripe down"));

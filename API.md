@@ -15,13 +15,11 @@ http://localhost:3000
 
 ## Authentication
 
-All endpoints (except webhooks) require authentication via JWT token in the Authorization header:
+All endpoints (except webhooks) require a better-auth session, sent as an HttpOnly cookie.
 
-```
-Authorization: Bearer {your_jwt_token}
-```
-
-The token is returned by `POST /api/auth/login` and `POST /api/auth/register`.
+- Obtain it with `POST /api/auth/sign-up/email` `{ name, email, password }` or `POST /api/auth/sign-in/email` `{ email, password }`.
+- `POST /api/auth/sign-out` ends it.
+- `GET /api/users/profile` returns the current user.
 
 ---
 

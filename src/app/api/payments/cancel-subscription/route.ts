@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         }
     }
 
-    await run("UPDATE users SET plan = 'free' WHERE id = ?", [user.id]);
+    await run(`UPDATE "user" SET plan = 'free' WHERE id = ?`, [user.id]);
     await run("INSERT INTO payment_logs (id, user_id, amount, status, notes) VALUES (?, ?, ?, ?, ?)", [
         randomUUID(),
         user.id,

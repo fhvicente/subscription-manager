@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the hand-rolled JWT/bcrypt auth with better-auth 1.7.7 mapped onto the existing `users` table. Every app route keeps calling `getUser(req)` unchanged.
+**Goal:** Replace the hand-rolled JWT/bcrypt auth with better-auth 1.7.7 on its default schema (`"user"`, `session`, `account`, `verification`, `"rateLimit"`). Every app route keeps calling `getUser(req)`, and API responses keep their shape.
 
 **Architecture:** One better-auth instance (`src/server/better-auth.ts`) on the app's `pg` pool, served by a catch-all `/api/auth/[...all]` route. `src/server/auth.ts` keeps its interface (`getUser`, `unauthorized`, `isAdmin`, ...) but resolves the user from a better-auth session. The client `AuthProvider` keeps its API and uses `better-auth/react` inside.
 
@@ -14,9 +14,18 @@
 
 - `better-auth` pinned to exactly `1.7.7` (same as the user's other project). No other new dependency.
 - Remove `jsonwebtoken`, `bcrypt`, `@types/jsonwebtoken`, `@types/bcrypt`.
-- better-auth `user.modelName: "users"`, fields `createdAt → created_at`, `updatedAt → updated_at`. No `additionalFields`.
+- better-auth default schema:
+  - table `"user"`, always quoted because `user` is reserved in Postgres, with camelCase `"createdAt"`/`"updatedAt"`/`"emailVerified"`;
+  - `plan`, `premiumUntil` and `stripeCustomerId` are `user.additionalFields` with `input: false`;
+  - the table `users` no longer exists anywhere.
+- App tables keep their snake_case columns. Their `user_id` FKs reference `"user" (id) ON DELETE CASCADE`.
+- API responses keep their shape. Where a query over `"user"` returns timestamps to the client, alias them `"createdAt" AS created_at` and `"updatedAt" AS updated_at`.
+- No destructive SQL in app code. Existing DBs are reset by hand (README). Only the throwaway `subtrack_test` DB is dropped and recreated by the implementer.
 - Env vars: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`. `JWT_SECRET`/`JWT_EXPIRES_IN` disappear everywhere.
-- Limits: sign-in 20 per IP / 15 min, sign-up 5 per IP / hour (better-auth `customRules`, `storage: "database"`), sign-in 10 per email / 15 min (our `rateLimited()` in a `before` hook). Name 1–100 chars after trim; password 8–128 (better-auth defaults).
+- Limits:
+  - sign-in: 20 per IP / 15 min; sign-up: 5 per IP / hour (better-auth `customRules`, `storage: "database"`);
+  - sign-in: 10 per email / 15 min (our `rateLimited()` in a `before` hook);
+  - name: 1–100 characters after trim; password: 8–128 (better-auth defaults).
 - Sign-up enumeration is an accepted risk: no `requireEmailVerification`, `autoSignIn` stays on.
 - Ponytail: shortest correct diff. Keep existing names and patterns. Comments in English, matching the surrounding density.
 - Work only inside the worktree `/home/flaviovicente/projetos/subscription-manager/.claude/worktrees/better-auth`. Never touch the main checkout.
@@ -24,11 +33,13 @@
 
 ## Review Focus
 
-1. **First request after a deploy is a sign-up, on a DB that still has the old `users.password NOT NULL`.** It must succeed. Pinned in Task 1 ("fresh deploy" test).
-2. **A stale or expired session cookie must not loop** between `/sign-in` and `/dashboard`. Every 401 expires both better-auth cookie names. Pinned in Task 1 ("unauthorized expires" test).
-3. **Admin deletes a user:** that user's sessions die with them (FK cascade), and their cookie gets 401. Pinned in Task 1.
+1. **First request after a deploy is a sign-up, on an empty DB.** It must succeed. Pinned in Task 1 ("fresh deploy" test).
+2. **A stale or expired session cookie must not loop** between `/sign-in` and `/dashboard`. Every 401 expires both better-auth cookie names. Pinned in Task 1.
+3. **Admin deletes a user:** their sessions die with them (FK cascade to `"user"`), and their cookie gets 401. Pinned in Task 1.
 4. **Email case:** signing up as `Ana@Test.dev` and signing in as `ana@test.dev` works, and the per-email lockout counts both spellings as one. Pinned in Task 1.
-5. **Sign-out really revokes:** the cookie captured before sign-out gets 401 afterwards. A JWT couldn't do this. Pinned in Task 1.
+5. **Sign-up can't grant premium:** a body with `plan: "premium"` still creates a `free` user (`input: false`). Pinned in Task 1.
+
+Sign-out revocation is also pinned in Task 1.
 
 ---
 
@@ -36,34 +47,38 @@
 
 **Files:**
 - Modify: `package.json`, `package-lock.json` (via npm)
-- Modify: `src/server/db.ts` (export `pool`, add `ensureSchema`, extend `schema`)
+- Modify: `src/server/db.ts` (export `pool`, add `ensureSchema`, new schema)
 - Create: `src/server/better-auth.ts`
 - Create: `src/app/api/auth/[...all]/route.ts`
 - Delete: `src/app/api/auth/login/route.ts`, `src/app/api/auth/register/route.ts`, `src/app/api/auth/me/route.ts`, `src/app/api/auth/logout/route.ts`
 - Modify: `src/server/auth.ts` (rewrite the session part, keep the admin helpers)
 - Modify: `src/app/(protected)/dashboard/layout.tsx`, `src/app/(protected)/admin/layout.tsx`
-- Modify: `vitest.config.ts`, `tests/helpers.ts`, `tests/subscriptions.test.ts` (one header)
+- Modify (`users` → `"user"`): `src/server/email.ts`, `src/app/api/payments/cancel-subscription/route.ts`, `src/app/api/payments/session/route.ts`, `src/app/api/payments/webhook/route.ts`, `src/app/api/admin/route.ts`, `src/app/api/admin/users/[id]/route.ts`, `src/app/api/users/profile/route.ts`
+- Modify: `vitest.config.ts`, `tests/helpers.ts`, `tests/subscriptions.test.ts`, `tests/payments.test.ts`, `tests/admin.test.ts`
 - Rewrite: `tests/auth.test.ts`
-- Modify: `README.md` (env table), `API.md` (auth section)
+- Modify: `README.md` (env table, one-time reset), `API.md` (auth section)
 
 **Interfaces:**
 - Consumes: `rateLimited(key, limit, windowSeconds): Promise<boolean>` and `get`/`run` from `src/server/db.ts` (exist today).
 - Produces:
   - `pool: Pool` and `ensureSchema(): Promise<unknown>` from `src/server/db.ts`.
   - `auth` (the better-auth instance) from `src/server/better-auth.ts`.
-  - `getUser(req: Request): Promise<Row | null>`, `currentUser(): Promise<Row | null>`, `unauthorized(): Response` from `src/server/auth.ts`. `Row` is the full `users` row. `isAdmin`, `forbidden`, `logAdmin`, `clientIp`, `tooManyRequests` are unchanged.
+  - `getUser(req: Request): Promise<Row | null>`, `currentUser(): Promise<Row | null>`, `unauthorized(): Response` from `src/server/auth.ts`. `Row` is the full `"user"` row. `isAdmin`, `forbidden`, `logAdmin`, `clientIp`, `tooManyRequests` are unchanged.
   - Test helpers: `signUp(email?) → { user, token, email }`, where `token` is now the whole `name=value` session cookie pair, plus `sessionCookie(res)` and `authReq(path, opts)`. `req()` keeps its signature and sends `token` as the `cookie` header.
 
-- [ ] **Step 1: Swap the dependencies**
+- [ ] **Step 1: Recreate the throwaway test database and swap the dependencies**
+
+The test DB holds the old schema, and nothing in it is kept. Touch only `subtrack_test`, never the `subtrack` dev database or Neon.
 
 ```bash
+docker compose exec -T db psql -U subtrack -c "DROP DATABASE IF EXISTS subtrack_test" -c "CREATE DATABASE subtrack_test"
 npm install better-auth@1.7.7 --save-exact
 npm uninstall jsonwebtoken bcrypt @types/jsonwebtoken @types/bcrypt
 ```
 
 - [ ] **Step 2: Point the tests at better-auth env vars**
 
-In `vitest.config.ts`, replace the two lines
+In `vitest.config.ts`, replace
 
 ```ts
             JWT_SECRET: "test-secret",
@@ -88,7 +103,7 @@ import { auth } from "@/server/better-auth";
 
 export const reset = () =>
     run(
-        `TRUNCATE users, subscriptions, notification_settings, payment_logs, rate_limits,
+        `TRUNCATE "user", subscriptions, notification_settings, payment_logs, rate_limits,
                   session, account, verification, "rateLimit" CASCADE`
     );
 
@@ -120,11 +135,14 @@ export function authReq(path: string, { body, token }: { body?: unknown; token?:
 
 export const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 
-// Calls better-auth directly (no HTTP, so no per-IP limit) and returns our `users` row.
+// Calls better-auth directly (no HTTP, so no per-IP limit) and returns the "user" row in the API's shape.
 export async function signUp(email = `${randomUUID()}@test.dev`) {
     const res = await auth.api.signUpEmail({ body: { name: "Ana", email, password: "secret123" }, asResponse: true });
     const { user: created } = await res.json();
-    const user = await get("SELECT id, email, name, plan, created_at, updated_at FROM users WHERE id = ?", [created.id]);
+    const user = await get(
+        `SELECT id, email, name, plan, "createdAt" AS created_at, "updatedAt" AS updated_at FROM "user" WHERE id = ?`,
+        [created.id]
+    );
     return { user: user!, token: sessionCookie(res), email };
 }
 
@@ -172,11 +190,17 @@ describe("sign-up (/api/auth/sign-up/email)", () => {
         expect(cookie).toMatch(/SameSite=Lax/i);
 
         const { user } = await res.json();
-        expect((await get("SELECT plan FROM users WHERE id = ?", [user.id]))!.plan).toBe("free");
+        expect((await get(`SELECT plan FROM "user" WHERE id = ?`, [user.id]))!.plan).toBe("free");
         const account = await get(`SELECT password FROM account WHERE "userId" = ?`, [user.id]);
         expect(account!.password).toBeTruthy();
         expect(account!.password).not.toBe("secret123");
         expect((await me(sessionCookie(res))).status).toBe(200);
+    });
+
+    it("ignores a plan sent at sign-up (input: false)", async () => {
+        const res = await call("/sign-up/email", { body: signUpBody({ plan: "premium" }) });
+        const { user } = await res.json();
+        expect((await get(`SELECT plan FROM "user" WHERE id = ?`, [user.id]))!.plan).toBe("free");
     });
 
     it.each([
@@ -246,7 +270,7 @@ describe("sessions", () => {
         }],
         ["a user deleted by an admin", async () => {
             const { token, user } = await signUp();
-            await run("DELETE FROM users WHERE id = ?", [user.id]);
+            await run(`DELETE FROM "user" WHERE id = ?`, [user.id]);
             expect(await get(`SELECT id FROM session WHERE "userId" = ?`, [user.id])).toBeUndefined();
             return token;
         }],
@@ -265,11 +289,11 @@ describe("sessions", () => {
     });
 });
 
-// Last: it rebuilds the schema through a fresh module graph.
+// Last: it drops every table and rebuilds the schema through a fresh module graph.
 describe("fresh deploy", () => {
-    it("a sign-up as the very first request works over the old schema (password column, no auth tables)", async () => {
-        await run(`DROP TABLE session, account, verification, "rateLimit"`);
-        await run("ALTER TABLE users ADD COLUMN password TEXT NOT NULL");
+    it("a sign-up as the very first request works on an empty database", async () => {
+        await run(`DROP TABLE "user", subscriptions, notification_settings, payment_logs, rate_limits,
+                              session, account, verification, "rateLimit" CASCADE`);
         vi.resetModules();
         const route = await import("@/app/api/auth/[...all]/route");
         const res = await route.POST(authReq("/sign-up/email", { body: signUpBody() }));
@@ -283,17 +307,27 @@ describe("fresh deploy", () => {
 Run: `npx vitest run tests/auth.test.ts`
 Expected: FAIL. `@/server/better-auth` cannot be resolved.
 
-- [ ] **Step 6: Extend the database module**
+- [ ] **Step 6: New schema and `ensureSchema` in the database module**
 
 In `src/server/db.ts`:
 
-(a) Append to the end of the `schema` template string, after the `rate_limits` table:
+(a) In the `schema` template string, replace the whole `CREATE TABLE IF NOT EXISTS users (...)` block with the better-auth tables. Put them first, because the app tables reference `"user"`:
 
 ```sql
--- better-auth (src/server/better-auth.ts) uses `users` plus these tables; the password lives in `account`.
-ALTER TABLE users DROP COLUMN IF EXISTS password;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS image TEXT;
+-- better-auth's default schema (src/server/better-auth.ts). "user" is quoted: it's a reserved word.
+-- plan / premiumUntil / stripeCustomerId are better-auth additionalFields.
+CREATE TABLE IF NOT EXISTS "user" (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+  image TEXT,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  plan TEXT NOT NULL DEFAULT 'free',
+  "premiumUntil" TIMESTAMPTZ,
+  "stripeCustomerId" TEXT
+);
 
 CREATE TABLE IF NOT EXISTS session (
   id TEXT PRIMARY KEY,
@@ -303,14 +337,14 @@ CREATE TABLE IF NOT EXISTS session (
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
   "ipAddress" TEXT,
   "userAgent" TEXT,
-  "userId" TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE
+  "userId" TEXT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS account (
   id TEXT PRIMARY KEY,
   "accountId" TEXT NOT NULL,
   "providerId" TEXT NOT NULL,
-  "userId" TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  "userId" TEXT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
   "accessToken" TEXT,
   "refreshToken" TEXT,
   "idToken" TEXT,
@@ -339,13 +373,15 @@ CREATE TABLE IF NOT EXISTS "rateLimit" (
 );
 ```
 
-Then cross-check these columns against what better-auth expects for this config:
+In the three app tables, change every `REFERENCES users (id)` to `REFERENCES "user" (id)`. Keep `ON DELETE CASCADE` and every other column as is. The comment above `const schema` should say that camelCase columns are quoted so Postgres keeps their case, and that the better-auth tables use its default names.
+
+After Step 7, once the config exists, cross-check these columns against what better-auth expects:
 
 ```bash
 npx @better-auth/cli@1.7.7 generate --config src/server/better-auth.ts --output /tmp/claude-1000/ba-schema.sql -y
 ```
 
-Do this after Step 7, once the config exists. If the CLI can't load the config (path aliases), skip it: the tests in Step 10 exercise every table. If the CLI shows a column missing above, add it in the same style.
+If the CLI can't load the config (path aliases), skip it: the tests in Step 10 exercise every table. If the CLI shows a column missing above, add it in the same style.
 
 (b) Export the pool and pull the lazy schema into `ensureSchema`. Change
 
@@ -391,8 +427,14 @@ export const auth = betterAuth({
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL,
     emailAndPassword: { enabled: true },
-    // Our existing table; plan/premiumUntil/stripeCustomerId keep their DB defaults on sign-up.
-    user: { modelName: "users", fields: { createdAt: "created_at", updatedAt: "updated_at" } },
+    // Billing state lives on the user; input: false so sign-up / update-user can't set it.
+    user: {
+        additionalFields: {
+            plan: { type: "string", defaultValue: "free", input: false },
+            premiumUntil: { type: "date", required: false, input: false },
+            stripeCustomerId: { type: "string", required: false, input: false },
+        },
+    },
     rateLimit: {
         enabled: process.env.NODE_ENV !== "development",
         storage: "database", // shared by all serverless instances
@@ -449,11 +491,11 @@ import { headers } from "next/headers";
 import { auth } from "./better-auth";
 import { ensureSchema, get } from "./db";
 
-// The full `users` row (plan, premiumUntil, stripeCustomerId, ...) behind the session cookie, or null.
+// The full "user" row (plan, premiumUntil, stripeCustomerId, ...) behind the session cookie, or null.
 async function userFrom(h: Headers) {
     await ensureSchema();
     const session = await auth.api.getSession({ headers: h });
-    return session ? ((await get("SELECT * FROM users WHERE id = ?", [session.user.id])) ?? null) : null;
+    return session ? ((await get(`SELECT * FROM "user" WHERE id = ?`, [session.user.id])) ?? null) : null;
 }
 
 export const getUser = (req: Request) => userFrom(req.headers);
@@ -473,12 +515,7 @@ export function unauthorized() {
 
 Keep `clientIp`, `tooManyRequests`, `isAdmin`, `forbidden` and `logAdmin` below it exactly as they are. `signToken`, `withSession`, `clearSession` and `userFromToken` are gone.
 
-In both `src/app/(protected)/dashboard/layout.tsx` and `src/app/(protected)/admin/layout.tsx`:
-- drop `import { cookies } from "next/headers";`;
-- import `currentUser` instead of `userFromToken`;
-- replace `await userFromToken((await cookies()).get("token")?.value)` with `await currentUser()`.
-
-The dashboard layout becomes:
+Replace `src/app/(protected)/dashboard/layout.tsx` with:
 
 ```tsx
 import { redirect } from "next/navigation";
@@ -491,7 +528,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 }
 ```
 
-and the admin layout:
+and `src/app/(protected)/admin/layout.tsx` with:
 
 ```tsx
 import { redirect } from "next/navigation";
@@ -504,7 +541,37 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 }
 ```
 
-- [ ] **Step 10: Run the auth tests**
+- [ ] **Step 10: Rename `users` to `"user"` in the app's SQL**
+
+Apply exactly these changes:
+
+- `src/server/email.ts`: `JOIN users u ON s.user_id = u.id` → `JOIN "user" u ON s.user_id = u.id`.
+- `src/app/api/payments/cancel-subscription/route.ts`: `UPDATE users SET plan = 'free'` → `UPDATE "user" SET plan = 'free'`. Use a backtick string if needed.
+- `src/app/api/payments/session/route.ts`: `UPDATE users SET "stripeCustomerId"` → `UPDATE "user" SET "stripeCustomerId"`.
+- `src/app/api/payments/webhook/route.ts`: every `users` in SQL → `"user"` (the `UPDATE`s and the `SELECT id FROM users`).
+- `src/app/api/admin/route.ts`:
+  - user KPI query: `FROM users` → `FROM "user"`, and its `${LAST_30}` → `"createdAt" > now() - interval '30 days'`. `LAST_30` stays as is for `payment_logs`.
+  - user list: `u.created_at,` → `u."createdAt" AS created_at,`, `FROM users u` → `FROM "user" u`, `ORDER BY u.created_at DESC` → `ORDER BY u."createdAt" DESC`.
+  - recent payments: `JOIN users u` → `JOIN "user" u`.
+- `src/app/api/admin/users/[id]/route.ts`:
+  - `SELECT id, email, name, plan, "premiumUntil", created_at FROM users` → `SELECT id, email, name, plan, "premiumUntil", "createdAt" AS created_at FROM "user"`;
+  - `UPDATE users SET plan = ?, "premiumUntil" = ?, updated_at = now()` → `UPDATE "user" SET plan = ?, "premiumUntil" = ?, "updatedAt" = now()`;
+  - the PATCH's trailing `SELECT ... FROM users` → `FROM "user"`;
+  - `DELETE FROM users` → `DELETE FROM "user"`.
+- `src/app/api/users/profile/route.ts`:
+  - the `profile` query → ``get(`SELECT id, email, name, plan, "createdAt" AS created_at, "updatedAt" AS updated_at FROM "user" WHERE id = ?`, [id])``;
+  - the PUT → ``run(`UPDATE "user" SET name = ?, "updatedAt" = now() WHERE id = ?`, [body.name, user.id])``.
+- `tests/subscriptions.test.ts`, `tests/payments.test.ts`, `tests/admin.test.ts`: every SQL `users` → `"user"`. Use backticks where the string was double-quoted, e.g. ``get(`SELECT plan FROM "user" WHERE id = ?`, ...)``.
+
+Then check that no SQL still says `users`:
+
+```bash
+grep -rnE "(FROM|JOIN|UPDATE|INTO|TRUNCATE|REFERENCES) +users\b" src tests
+```
+
+Expected: no output.
+
+- [ ] **Step 11: Run the auth tests, then everything**
 
 Run: `npx vitest run tests/auth.test.ts`
 Expected: PASS.
@@ -513,20 +580,25 @@ If an assertion on a better-auth status fails (for example, duplicate email retu
 
 If the per-IP 429 never comes, check that better-auth reads `x-forwarded-for` (`advanced.ipAddress`). Fix the config, not the test.
 
-- [ ] **Step 11: Run everything**
-
 Run: `npx vitest run && npx tsc --noEmit`
 Expected: all suites PASS (subscriptions, payments, users, admin, auth, subscription-form), and no type errors.
 
-`tests/users.test.ts` may still contain an `isAdmin` assertion that goes through `/api/auth/me`. If so, leave a failing `isAdmin`-on-profile case to Task 2. Report it, but don't delete it.
+`tests/users.test.ts` gets its `isAdmin` test in Task 2. Nothing in it should fail now.
 
 - [ ] **Step 12: Update the docs**
 
-In `README.md`'s env table:
-- replace the `JWT_SECRET`, `JWT_EXPIRES_IN` row with
-  `| \`BETTER_AUTH_SECRET\` | yes | Signs session cookies (32+ random chars: \`openssl rand -base64 32\`) |`
-  `| \`BETTER_AUTH_URL\` | yes | Public app URL, e.g. \`http://localhost:3000\` |`
-- in the `ADMIN_EMAILS` row, change `` `isAdmin` flag on `/api/auth/me` `` to `` `isAdmin` flag on `/api/users/profile` ``.
+In `README.md`:
+- **env table:** replace the `JWT_SECRET`, `JWT_EXPIRES_IN` row with these two rows:
+  - `` | `BETTER_AUTH_SECRET` | yes | Signs session cookies (32+ random chars: `openssl rand -base64 32`) | ``
+  - `` | `BETTER_AUTH_URL` | yes | Public app URL, e.g. `http://localhost:3000` | ``
+- **`ADMIN_EMAILS` row:** change `` `isAdmin` flag on `/api/auth/me` `` to `` `isAdmin` flag on `/api/users/profile` ``.
+- **Local setup section:** add a short note that a database created before better-auth must be reset once, and that the schema is recreated on the next request:
+
+  ```bash
+  docker compose exec db psql -U subtrack -c 'DROP TABLE IF EXISTS users, subscriptions, notification_settings, payment_logs, rate_limits, "user", session, account, verification, "rateLimit" CASCADE'
+  ```
+
+  Add that on Neon the same `DROP TABLE` runs once in the SQL editor. It deletes all data, which is acceptable only because there are no real users yet.
 
 In `API.md`'s authentication section (the lines saying a JWT goes in the `Authorization` header, returned by `/api/auth/login` and `/api/auth/register`), say instead that:
 - authentication is a better-auth session cookie (HttpOnly);
@@ -540,7 +612,7 @@ Remove any remaining sections for `/api/auth/login`, `/register`, `/me` and `/lo
 
 ```bash
 git add -A
-git commit -m "feat: replace JWT auth with better-auth sessions
+git commit -m "feat: replace JWT auth with better-auth on its default schema
 
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
@@ -561,7 +633,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing test**
 
-In `tests/users.test.ts`, inside the existing profile `describe` block (the one with "Beatriz"), add:
+In `tests/users.test.ts`, add `vi` to the vitest import (`import { beforeEach, describe, expect, it, vi } from "vitest";`). Then, inside the `describe("/api/users/profile", ...)` block, add:
 
 ```ts
     it("tells the client whether the user is an admin (ADMIN_EMAILS, case-insensitive)", async () => {
@@ -576,8 +648,6 @@ In `tests/users.test.ts`, inside the existing profile `describe` block (the one 
         }
     });
 ```
-
-Make sure `vi` is imported from `vitest` at the top of the file. If any older test there asserts `isAdmin` through `/api/auth/me`, delete it: the route no longer exists, and this test replaces it.
 
 - [ ] **Step 2: Run it and confirm it fails**
 
@@ -616,19 +686,15 @@ with
 
 In `src/lib/auth.js`:
 
-(a) Add these imports and helpers below `const API_URL = '/api';`:
+(a) Add `import { createAuthClient } from 'better-auth/react';` with the other imports, and below `const API_URL = '/api';` add:
 
 ```js
-import { createAuthClient } from 'better-auth/react';
-
 // Same origin, so no baseURL: it talks to /api/auth/* (better-auth).
 const authClient = createAuthClient();
 
-// Our users row (plan, isAdmin, ...), which the better-auth session doesn't carry.
+// Our user row (plan, isAdmin, ...), which the better-auth session doesn't carry.
 const fetchProfile = async () => (await axios.get(`${API_URL}/users/profile`)).data;
 ```
-
-Move the `import` up with the other imports.
 
 (b) Replace the initial-load `useEffect`, `getCurrentUser`, `register`, `login` and `logout` with:
 
@@ -702,7 +768,12 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 
 ## Final verification (controller, after both tasks)
 
-Run the built app against the local DB (`set -a; . ./.env.development; set +a`), with `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL=http://localhost:3100` in the environment and `next start -p 3100`. With Playwright, check:
+Run the built app against a scratch database `subtrack_smoke`, created for this and dropped afterwards. Never use the user's `subtrack` dev DB, which still has the old schema until they reset it. Set:
+- `DATABASE_URL=postgres://subtrack:subtrack@localhost:5432/subtrack_smoke`;
+- `BETTER_AUTH_SECRET`;
+- `BETTER_AUTH_URL=http://localhost:3100`;
+
+then run `next start -p 3100`. With Playwright, check:
 1. sign-up lands on `/dashboard`;
 2. a reload stays logged in;
 3. sign-out goes to `/sign-in`, and `/dashboard` then redirects to `/sign-in`;
@@ -710,4 +781,4 @@ Run the built app against the local DB (`set -a; . ./.env.development; set +a`),
 5. a user listed in `ADMIN_EMAILS` lands on `/admin`;
 6. after the session row is deleted in the DB, visiting `/dashboard` ends on `/sign-in` with no redirect loop.
 
-Delete the test users afterwards.
+Drop `subtrack_smoke` afterwards.

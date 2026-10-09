@@ -1,18 +1,35 @@
 # SubTrack
 
-A simple and effective tool to manage your subscriptions and save money.
+**Find out what your subscriptions really cost — and cut the ones you forgot about.**
 
-## Technology Stack
+SubTrack keeps every recurring charge (streaming, cloud, gym, apps) in one list, shows the real monthly and yearly total, and emails you before a renewal hits your card. It's built for anyone who has looked at a bank statement and wondered *"wait, what is that?"*.
 
-One Next.js app: pages in `src/app`, the REST API as route handlers in `src/app/api`, server code in `src/server`.
+## Features
 
-- **Framework**: Next.js, React, TailwindCSS
-- **Database**: PostgreSQL (`pg`); local container via `docker-compose.yml`
-- **Authentication**: Custom JWT-based authentication
-- **Email Notifications**: SendGrid (daily cron in `src/instrumentation.ts`)
-- **Payments**: Stripe
+- **One list for every renewal**: add each subscription with its price, billing cycle and next due date.
+- **The real number**: monthly spend converted to the yearly total, so €9.99 doesn't look small anymore.
+- **Renewal reminders**: a daily job emails you a set number of days before each payment (you pick how many in Settings).
+- **Free and Premium plans**: the free plan tracks up to 3 subscriptions. Premium (€9.99/month, through Stripe Checkout) removes the limit.
+- **Accounts and security**: email/password sign-up with bcrypt hashes, a JWT in an httpOnly cookie, and rate limits stored in Postgres so they hold across serverless instances.
+- **Admin panel**: admins (set by `ADMIN_EMAILS`) can view users, manage plans and trigger the renewal emails.
 
-## Getting Started
+## Tech stack
+
+The whole thing is one Next.js app: pages live in `src/app`, the REST API is route handlers in `src/app/api`, and server-only code is in `src/server`.
+
+| Layer | Tools |
+| --- | --- |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS 4, Radix UI, GSAP |
+| Backend | Next.js route handlers, Zod validation |
+| Database | PostgreSQL (`pg`); Docker for local dev, Neon in production |
+| Auth | Custom JWT (`jsonwebtoken` + `bcrypt`) |
+| Payments | Stripe (Checkout + webhooks) |
+| Email | SendGrid; Vercel Cron triggers the daily renewal job |
+| Tests | Vitest against a real Postgres database |
+
+## Getting started
+
+Before you start, install Node.js 20+ and Docker.
 
 ```bash
 npm install
@@ -20,28 +37,43 @@ npm run db    # starts Postgres in Docker and waits until it is healthy
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Tables are created on the first request. `.env.development` already points `DATABASE_URL` at the local container; stop it with `docker compose down` (add `-v` to wipe the data).
-
-### Tests
-
-`npm test` runs the API route handlers against a `subtrack_test` database in the same container (create it once: `docker compose exec db psql -U subtrack -c "CREATE DATABASE subtrack_test"`). Stripe network calls are stubbed; webhooks are signed with a test secret.
+Then open [http://localhost:3000](http://localhost:3000). The tables are created on the first request. `.env.development` already points `DATABASE_URL` at the local container. To stop the container, run `docker compose down` (add `-v` to delete the data).
 
 ### Environment variables (`.env.local`)
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | yes | Sign auth tokens (e.g. `7d`) |
-| `DATABASE_URL` | yes | Postgres connection string (set in `.env.development` for local dev) |
-| `FRONTEND_URL` | for payments/email | Public app URL used in Stripe redirects and email links |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_MONTHLY_PRICE_ID` (the €9,99/month price) | for payments | Without them the payment routes return 503 |
-| `SENDGRID_API_KEY`, `EMAIL_FROM` | for email | Without them emails are only logged |
-| `CRON_SECRET` | in production | Vercel sends it to `/api/cron/renewals`; without it the route returns 401 |
-| `ADMIN_EMAILS` | no | Comma-separated emails treated as admins (`isAdmin` in `src/server/auth.ts`, `isAdmin` flag on `/api/auth/me`) |
+| `DATABASE_URL` | yes | Postgres connection string (already set in `.env.development` for local dev) |
+| `FRONTEND_URL` | for payments/email | Public app URL, used in Stripe redirects and email links |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_MONTHLY_PRICE_ID` | for payments | Without them, the payment routes return 503 |
+| `SENDGRID_API_KEY`, `EMAIL_FROM` | for email | Without them, emails are only written to the log |
+| `CRON_SECRET` | in production | Vercel sends it to `/api/cron/renewals`; without it, the route returns 401 |
+| `ADMIN_EMAILS` | no | Comma-separated list of admin emails |
 
-## API Documentation
+### Tests
 
-See [API.md](API.md).
+`npm test` runs the API route handlers against a `subtrack_test` database in the same container. Create that database once:
+
+```bash
+docker compose exec db psql -U subtrack -c "CREATE DATABASE subtrack_test"
+```
+
+Stripe network calls are stubbed, and webhooks are signed with a test secret.
+
+## API overview
+
+| Area | Routes |
+| --- | --- |
+| Auth | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` |
+| Subscriptions | `GET/POST /api/subscriptions`, `GET/PUT/DELETE /api/subscriptions/:id` |
+| Profile & notifications | `/api/users/profile`, `/api/notifications/settings`, `POST /api/notifications/test` |
+| Payments | `/api/payments/session`, `/api/payments/status`, `/api/payments/history`, `/api/payments/cancel-subscription`, `POST /api/payments/webhook` |
+| Admin | `/api/admin`, `/api/admin/users/:id`, `/api/admin/renewals` |
+| Cron | `GET /api/cron/renewals` (protected by `CRON_SECRET`) |
 
 ## Deployment
 
-Vercel (app) + Neon (Postgres). Import the repo in Vercel and set the env vars above; `DATABASE_URL` is Neon's **pooled** connection string (host contains `-pooler`). `vercel.json` schedules `/api/cron/renewals` daily, which sends the renewal emails.
+The app runs on Vercel and the database on Neon. Import the repo into Vercel and set the environment variables listed above. For `DATABASE_URL`, use Neon's **pooled** connection string (the host contains `-pooler`). `vercel.json` schedules `/api/cron/renewals` every day at 08:00 UTC to send the renewal emails.
+
+Add a Stripe webhook that points to `https://<your-domain>/api/payments/webhook`, and put its signing secret in `STRIPE_WEBHOOK_SECRET`.

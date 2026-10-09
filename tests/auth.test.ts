@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as register from "@/app/api/auth/register/route";
@@ -65,6 +66,16 @@ describe("POST /api/auth/login", () => {
         expect((jwt.verify(tokenOf(res), process.env.JWT_SECRET!) as { id: string }).id).toBe(user.id);
     });
 
+    it("tells the client whether the user is an admin, so the UI can route to /admin", async () => {
+        vi.stubEnv("ADMIN_EMAILS", "boss@test.dev");
+        await signUp("boss@test.dev");
+        await signUp("ana@test.dev");
+        const as = async (email: string) =>
+            (await (await login.POST(req("POST", { body: { email, password: "secret123" } }))).json()).user.isAdmin;
+        expect(await as("boss@test.dev")).toBe(true);
+        expect(await as("ana@test.dev")).toBe(false);
+    });
+
     it("rejects a wrong password and an unknown email with the same message", async () => {
         await signUp("ana@test.dev");
         for (const body of [
@@ -74,6 +85,17 @@ describe("POST /api/auth/login", () => {
             const res = await login.POST(req("POST", { body }));
             expect(res.status).toBe(401);
             expect((await res.json()).error).toBe("Invalid credentials");
+        }
+    });
+
+    it("runs bcrypt for an unknown email too, so response time doesn't reveal which emails have accounts", async () => {
+        const compare = vi.spyOn(bcrypt, "compare");
+        try {
+            await login.POST(req("POST", { body: { email: "nobody@test.dev", password: "secret123" } }));
+            expect(compare).toHaveBeenCalledTimes(1);
+            expect(compare.mock.calls[0][1]).toMatch(/^\$2b\$10\$/); // same cost as real hashes
+        } finally {
+            compare.mockRestore();
         }
     });
 

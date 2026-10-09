@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@/components/UserButton";
 import Logo from "@/components/Logo";
+import { useAuth } from "@/lib/auth";
 
 const NAV = [
     { href: "/dashboard", label: "Dashboard" },
@@ -18,6 +19,9 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const { user } = useAuth();
+    const home = user?.isAdmin ? "/admin" : "/dashboard";
+    const nav = user?.isAdmin ? [{ href: home, label: "Admin" }, ...NAV.slice(1)] : NAV;
     const isActive = (href: string) =>
         pathname === href || pathname.startsWith(`${href}/`);
 
@@ -25,14 +29,14 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-paper">
             <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper">
                 <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-                    <Link href="/dashboard" aria-label="SubTrack dashboard" className="text-ink">
+                    <Link href={home} aria-label="SubTrack home" className="text-ink">
                         <Logo />
                     </Link>
                     <nav
                         aria-label="Main"
                         className="hidden items-center gap-1 rounded-full bg-ink/[0.05] p-1 md:flex"
                     >
-                        {NAV.map((n) => (
+                        {nav.map((n) => (
                             <Link
                                 key={n.href}
                                 href={n.href}
@@ -51,7 +55,7 @@ export default function DashboardLayout({
                     aria-label="Main"
                     className="flex gap-1 overflow-x-auto px-5 pb-3 md:hidden"
                 >
-                    {NAV.map((n) => (
+                    {nav.map((n) => (
                         <Link
                             key={n.href}
                             href={n.href}

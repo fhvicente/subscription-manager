@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { get, rateLimited, run } from "@/server/db";
-import { clientIp, tooManyRequests, withSession } from "@/server/auth";
+import { clientIp, isAdmin, tooManyRequests, withSession } from "@/server/auth";
 
 const registerSchema = z.object({
     name: z.string().trim().min(1).max(100),
@@ -38,5 +38,5 @@ export async function POST(req: Request) {
         "SELECT id, email, name, plan, created_at, updated_at FROM users WHERE id = ?",
         [id]
     );
-    return withSession({ user }, id, 201);
+    return withSession({ user: { ...user, isAdmin: isAdmin(user!) } }, id, 201);
 }

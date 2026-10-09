@@ -21,8 +21,11 @@ export const clearSession = (body: unknown, status = 200) =>
     Response.json(body, { status, headers: { "Set-Cookie": sessionCookie("", 0) } });
 
 // Returns the user behind the session cookie, or null if missing/invalid.
-export async function getUser(req: Request) {
-    const token = req.headers.get("cookie")?.match(/(?:^|;\s*)token=([^;]+)/)?.[1];
+export const getUser = (req: Request) =>
+    userFromToken(req.headers.get("cookie")?.match(/(?:^|;\s*)token=([^;]+)/)?.[1]);
+
+// For server components, which read the cookie via `cookies()` instead of a Request.
+export async function userFromToken(token: string | undefined) {
     if (!token) return null;
     let id: string | undefined;
     try {
@@ -51,3 +54,9 @@ export const isAdmin = (user: { email?: unknown } | null) =>
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean)
         .includes(String(user.email).toLowerCase());
+
+export const forbidden = () => Response.json({ error: "Forbidden" }, { status: 403 });
+
+// ponytail: admin actions go to the Vercel logs only; add an admin_actions table if they need to be browsable.
+export const logAdmin = (admin: { email?: unknown }, action: string, target?: string) =>
+    console.info(JSON.stringify({ adminAction: action, admin: admin.email, target, at: new Date().toISOString() }));
